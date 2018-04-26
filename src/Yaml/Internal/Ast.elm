@@ -16,8 +16,8 @@ import Set
 {-| -}
 type Ast
     = Primitive String
-    | Record (List ( String, Ast ))
-    | Array Ast
+    | Hash (List ( String, Ast ))
+    | Array (List Ast)
 
 
 {-| -}
@@ -30,7 +30,7 @@ parser : Parser Ast
 parser =
     succeed identity
         |. beginning
-        |= (fieldName |> map Primitive)
+        |= value
 
 
 
@@ -61,29 +61,87 @@ threeDashes =
 
 value : Parser Ast
 value =
-    oneOf
-        [ record |> map Record
-        , fieldName |> map Primitive
-        ]
+    lazy <|
+        \() ->
+            oneOf
+                [ map Hash hashSingleLine
+                , map Array arraySingleLine
+                , map Primitive fieldName
+                ]
 
 
 
--- HASHES
+-- SINGLE LINE HASHES
 
 
-record : Parser (List ( String, Ast ))
-record =
-    Parser.record spaces field
+hashSingleLine : Parser (List ( String, Ast ))
+hashSingleLine =
+    lazy <|
+        \() ->
+            succeed identity
+                |. symbol "{"
+                |. spaces
+                |= andThen (\n -> hashSingleLineHelp [ n ]) property
+                |. spaces
+                |. symbol "}"
 
 
-field : Parser ( String, Ast )
-field =
-    Parser.succeed (,)
-        |= fieldName
-        |. spaces
-        |. Parser.symbol ":"
-        |. spaces
-        |= (fieldName |> map Primitive)
+hashSingleLineHelp : List ( String, Ast ) -> Parser (List ( String, Ast ))
+hashSingleLineHelp revProperties =
+    lazy <|
+        \() ->
+            oneOf
+                [ andThen (\n -> hashSingleLineHelp (n :: revProperties)) hashPropertyNext
+                , succeed (List.reverse revProperties)
+                ]
+
+
+hashPropertyNext : Parser ( String, Ast )
+hashPropertyNext =
+    lazy <|
+        \() ->
+            delayedCommit spaces <|
+                succeed identity
+                    |. symbol ","
+                    |. spaces
+                    |= property
+
+
+
+-- SINGLE LINE ARRAY
+
+
+arraySingleLine : Parser (List Ast)
+arraySingleLine =
+    lazy <|
+        \() ->
+            succeed identity
+                |. symbol "["
+                |. spaces
+                |= andThen (\n -> arraySingleLineHelp [ n ]) value
+                |. spaces
+                |. symbol "]"
+
+
+arraySingleLineHelp : List Ast -> Parser (List Ast)
+arraySingleLineHelp revElements =
+    lazy <|
+        \() ->
+            oneOf
+                [ andThen (\n -> arraySingleLineHelp (n :: revElements)) arrayElementNext
+                , succeed (List.reverse revElements)
+                ]
+
+
+arrayElementNext : Parser Ast
+arrayElementNext =
+    lazy <|
+        \() ->
+            delayedCommit spaces <|
+                succeed identity
+                    |. symbol ","
+                    |. spaces
+                    |= value
 
 
 
@@ -106,6 +164,22 @@ isVarChar char =
 keywords : Set.Set String
 keywords =
     Set.empty
+
+
+
+-- PROPERTY
+
+
+property : Parser ( String, Ast )
+property =
+    lazy <|
+        \() ->
+            succeed (,)
+                |= fieldName
+                |. spaces
+                |. symbol ":"
+                |. spaces
+                |= value
 
 
 

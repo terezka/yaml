@@ -13,8 +13,8 @@ main =
 test : Result Parser.Error Ast.Ast
 test =
     Ast.build
-        """--- bad
-        good
+        """--- trash
+        { good: [[ok]], other: {fine: hey} }
 
 
         """
