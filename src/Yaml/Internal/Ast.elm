@@ -66,7 +66,7 @@ value =
             oneOf
                 [ map Hash hashSingleLine
                 , map Array arraySingleLine
-                , map Primitive fieldName
+                , map Primitive singleLineString
                 ]
 
 
@@ -81,7 +81,7 @@ hashSingleLine =
             succeed identity
                 |. symbol "{"
                 |. spaces
-                |= andThen (\n -> hashSingleLineHelp [ n ]) property
+                |= andThen (\n -> hashSingleLineHelp [ n ]) hashSingleLineProperty
                 |. spaces
                 |. symbol "}"
 
@@ -103,8 +103,31 @@ hashPropertyNext =
             delayedCommit spaces <|
                 succeed identity
                     |. symbol ","
+                    -- spacesOrSingleComma
                     |. spaces
-                    |= property
+                    |= hashSingleLineProperty
+
+
+hashSingleLineProperty : Parser ( String, Ast )
+hashSingleLineProperty =
+    lazy <|
+        \() ->
+            succeed (,)
+                |= fieldName
+                |. spaces
+                |. spacesOrSingleColon
+                |. spaces
+                |= value
+
+
+spacesOrSingleColon : Parser ()
+spacesOrSingleColon =
+    oneOf [ symbol ":", spaces ]
+
+
+spacesOrSingleComma : Parser ()
+spacesOrSingleComma =
+    oneOf [ symbol ",", spaces ]
 
 
 
@@ -145,6 +168,48 @@ arrayElementNext =
 
 
 
+-- STRING
+
+
+singleLineString : Parser String
+singleLineString =
+    succeed identity
+        |. spaces
+        |= andThen (\n -> singleLineStringHelp [ n ]) singleLineStringValid
+        |. spaces
+
+
+singleLineStringHelp : List String -> Parser String
+singleLineStringHelp revStrings =
+    oneOf
+        [ andThen (\n -> singleLineStringHelp (n :: revStrings)) singleLineStringNext
+        , succeed (List.reverse revStrings |> String.concat)
+        ]
+
+
+singleLineStringNext : Parser String
+singleLineStringNext =
+    delayedCommitMap (\spaces string -> spaces ++ string) keepSpaces <|
+        succeed identity
+            |= singleLineStringValid
+
+
+singleLineStringValid : Parser String
+singleLineStringValid =
+    keep oneOrMore singleLineStringValidate
+
+
+singleLineStringValidate : Char -> Bool
+singleLineStringValidate char =
+    char /= '[' && char /= ']' && char /= '{' && char /= '}' && char /= ',' && char /= '\n' && char /= ' '
+
+
+keepSpaces : Parser String
+keepSpaces =
+    keep oneOrMore (\c -> c == ' ')
+
+
+
 -- FIELD NAME
 
 
@@ -164,22 +229,6 @@ isVarChar char =
 keywords : Set.Set String
 keywords =
     Set.empty
-
-
-
--- PROPERTY
-
-
-property : Parser ( String, Ast )
-property =
-    lazy <|
-        \() ->
-            succeed (,)
-                |= fieldName
-                |. spaces
-                |. symbol ":"
-                |. spaces
-                |= value
 
 
 
