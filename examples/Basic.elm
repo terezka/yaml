@@ -14,7 +14,7 @@ test : Result Parser.Error Ast.Ast
 test =
     Ast.build
         """--- trash
-        { abc def, ghi jklm }
+        { hey: hey, ok: wow, [ abc def, ghi j[klm ] }
 
 
         """

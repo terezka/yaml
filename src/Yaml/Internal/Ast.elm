@@ -6,10 +6,10 @@ module Yaml.Internal.Ast exposing (Ast, build)
 
 -}
 
-import Char
 import Parser exposing (..)
-import Parser.LanguageKit as Parser exposing (..)
-import Set
+import Yaml.Internal.Ast.Compact.Array as CompactArray
+import Yaml.Internal.Ast.Compact.Hash as CompactHash
+import Yaml.Internal.Ast.Compact.String as CompactString
 
 
 {-| -}
@@ -48,7 +48,7 @@ beginning =
 
 documentNote : Parser ()
 documentNote =
-    threeDashes |. anythingUntilNewLine
+    threeDashes |. ignoreUntilNewLine
 
 
 threeDashes : Parser ()
@@ -65,181 +65,21 @@ value =
     lazy <|
         \() ->
             oneOf
-                [ map Hash hashSingleLine
-                , map Array arraySingleLine
-                , map Primitive singleLineString
+                [ map Hash (CompactHash.parser valueInner)
+                , map Array (CompactArray.parser valueInner)
+                , map Primitive (CompactString.parser Nothing)
                 ]
 
 
-
--- SINGLE LINE HASHES
-
-
-hashSingleLine : Parser (List ( String, Ast ))
-hashSingleLine =
-    lazy <|
-        \() ->
-            succeed identity
-                |. symbol "{"
-                |. spaces
-                |= andThen (\n -> hashSingleLineHelp [ n ]) hashSingleLineProperty
-                |. spaces
-                |. symbol "}"
-
-
-hashSingleLineHelp : List ( String, Ast ) -> Parser (List ( String, Ast ))
-hashSingleLineHelp revProperties =
+valueInner : Char -> Parser Ast
+valueInner endChar =
     lazy <|
         \() ->
             oneOf
-                [ andThen (\n -> hashSingleLineHelp (n :: revProperties)) hashPropertyNext
-                , succeed (List.reverse revProperties)
+                [ map Hash (CompactHash.parser valueInner)
+                , map Array (CompactArray.parser valueInner)
+                , map Primitive (CompactString.parser (Just endChar))
                 ]
-
-
-hashPropertyNext : Parser ( String, Ast )
-hashPropertyNext =
-    lazy <|
-        \() ->
-            delayedCommit spaces <|
-                succeed identity
-                    |. symbol ","
-                    |. spaces
-                    |= hashSingleLineProperty
-
-
-hashSingleLineProperty : Parser ( String, Ast )
-hashSingleLineProperty =
-    lazy <|
-        \() ->
-            succeed (,)
-                |= fieldName
-                |. spaces
-                |. spacesOrSingleColon
-                |. spaces
-                |= value
-
-
-spacesOrSingleColon : Parser ()
-spacesOrSingleColon =
-    oneOf [ symbol ":", spaces ]
-
-
-
--- SINGLE LINE ARRAY
-
-
-arraySingleLine : Parser (List Ast)
-arraySingleLine =
-    lazy <|
-        \() ->
-            succeed identity
-                |. symbol "["
-                |. spaces
-                |= andThen (\n -> arraySingleLineHelp [ n ]) value
-                |. spaces
-                |. symbol "]"
-
-
-arraySingleLineHelp : List Ast -> Parser (List Ast)
-arraySingleLineHelp revElements =
-    lazy <|
-        \() ->
-            oneOf
-                [ andThen (\n -> arraySingleLineHelp (n :: revElements)) arrayElementNext
-                , succeed (List.reverse revElements)
-                ]
-
-
-arrayElementNext : Parser Ast
-arrayElementNext =
-    lazy <|
-        \() ->
-            delayedCommit spaces <|
-                succeed identity
-                    |. symbol ","
-                    |. spaces
-                    |= value
-
-
-
--- STRING
-
-
-singleLineString : Parser String
-singleLineString =
-    lazy <|
-        \() ->
-            succeed identity
-                |. spaces
-                |= andThen (\n -> singleLineStringHelp [ n ]) singleLineStringValidateHead
-                |. spaces
-
-
-singleLineStringHelp : List String -> Parser String
-singleLineStringHelp revStrings =
-    lazy <|
-        \() ->
-            oneOf
-                [ andThen (\n -> singleLineStringHelp (n :: revStrings)) singleLineStringNext
-                , succeed (List.reverse revStrings |> String.concat)
-                ]
-
-
-singleLineStringNext : Parser String
-singleLineStringNext =
-    lazy <|
-        \() ->
-            delayedCommitMap (\spaces string -> spaces ++ string) keepSpaces <|
-                succeed identity
-                    |= singleLineStringValidateTail
-
-
-singleLineStringValidateHead : Parser String
-singleLineStringValidateHead =
-    lazy <|
-        \() ->
-            keep (Exactly 1) <|
-                \char ->
-                    char /= '[' && char /= ']' && char /= '{' && char /= ',' && char /= '\n' && char /= ' '
-
-
-singleLineStringValidateTail : Parser String
-singleLineStringValidateTail =
-    lazy <|
-        \() ->
-            keep oneOrMore <|
-                \char ->
-                    char /= '[' && char /= ']' && char /= '}' && char /= ',' && char /= '\n' && char /= ' '
-
-
-keepSpaces : Parser String
-keepSpaces =
-    lazy <|
-        \() ->
-            keep zeroOrMore (\c -> c == ' ')
-
-
-
--- FIELD NAME
-
-
-fieldName : Parser String
-fieldName =
-    variable (always True) isVarChar keywords
-
-
-isVarChar : Char -> Bool
-isVarChar char =
-    Char.isLower char
-        || Char.isUpper char
-        || Char.isDigit char
-        || (char == '_')
-
-
-keywords : Set.Set String
-keywords =
-    Set.empty
 
 
 
@@ -248,23 +88,14 @@ keywords =
 
 spaces : Parser ()
 spaces =
-    ignore zeroOrMore (\c -> c == ' ')
+    ignore zeroOrMore (\char -> char == ' ')
 
 
 spacesOrNewLines : Parser ()
 spacesOrNewLines =
-    ignore zeroOrMore (\c -> c == ' ' || String.fromChar c == "\n")
+    ignore zeroOrMore (\char -> char == ' ' || String.fromChar char == "\n")
 
 
-anythingUntilNewLine : Parser ()
-anythingUntilNewLine =
-    ignore zeroOrMore (\c -> c /= '\n')
-
-
-whitespace : Parser ()
-whitespace =
-    Parser.whitespace
-        { allowTabs = True
-        , lineComment = LineComment "#"
-        , multiComment = NoMultiComment
-        }
+ignoreUntilNewLine : Parser ()
+ignoreUntilNewLine =
+    ignore zeroOrMore (\char -> char /= '\n')
