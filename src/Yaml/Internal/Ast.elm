@@ -9,7 +9,6 @@ module Yaml.Internal.Ast exposing (Ast, build)
 import Char
 import Parser exposing (..)
 import Parser.LanguageKit as Parser exposing (..)
-import Parser.LowLevel as Parser exposing (..)
 import Set
 
 
@@ -31,6 +30,8 @@ parser =
     succeed identity
         |. beginning
         |= value
+        |. spacesOrNewLines
+        |. end
 
 
 
@@ -103,7 +104,6 @@ hashPropertyNext =
             delayedCommit spaces <|
                 succeed identity
                     |. symbol ","
-                    -- spacesOrSingleComma
                     |. spaces
                     |= hashSingleLineProperty
 
@@ -123,11 +123,6 @@ hashSingleLineProperty =
 spacesOrSingleColon : Parser ()
 spacesOrSingleColon =
     oneOf [ symbol ":", spaces ]
-
-
-spacesOrSingleComma : Parser ()
-spacesOrSingleComma =
-    oneOf [ symbol ",", spaces ]
 
 
 
@@ -173,40 +168,56 @@ arrayElementNext =
 
 singleLineString : Parser String
 singleLineString =
-    succeed identity
-        |. spaces
-        |= andThen (\n -> singleLineStringHelp [ n ]) singleLineStringValid
-        |. spaces
+    lazy <|
+        \() ->
+            succeed identity
+                |. spaces
+                |= andThen (\n -> singleLineStringHelp [ n ]) singleLineStringValidateHead
+                |. spaces
 
 
 singleLineStringHelp : List String -> Parser String
 singleLineStringHelp revStrings =
-    oneOf
-        [ andThen (\n -> singleLineStringHelp (n :: revStrings)) singleLineStringNext
-        , succeed (List.reverse revStrings |> String.concat)
-        ]
+    lazy <|
+        \() ->
+            oneOf
+                [ andThen (\n -> singleLineStringHelp (n :: revStrings)) singleLineStringNext
+                , succeed (List.reverse revStrings |> String.concat)
+                ]
 
 
 singleLineStringNext : Parser String
 singleLineStringNext =
-    delayedCommitMap (\spaces string -> spaces ++ string) keepSpaces <|
-        succeed identity
-            |= singleLineStringValid
+    lazy <|
+        \() ->
+            delayedCommitMap (\spaces string -> spaces ++ string) keepSpaces <|
+                succeed identity
+                    |= singleLineStringValidateTail
 
 
-singleLineStringValid : Parser String
-singleLineStringValid =
-    keep oneOrMore singleLineStringValidate
+singleLineStringValidateHead : Parser String
+singleLineStringValidateHead =
+    lazy <|
+        \() ->
+            keep (Exactly 1) <|
+                \char ->
+                    char /= '[' && char /= ']' && char /= '{' && char /= ',' && char /= '\n' && char /= ' '
 
 
-singleLineStringValidate : Char -> Bool
-singleLineStringValidate char =
-    char /= '[' && char /= ']' && char /= '{' && char /= '}' && char /= ',' && char /= '\n' && char /= ' '
+singleLineStringValidateTail : Parser String
+singleLineStringValidateTail =
+    lazy <|
+        \() ->
+            keep oneOrMore <|
+                \char ->
+                    char /= '[' && char /= ']' && char /= '}' && char /= ',' && char /= '\n' && char /= ' '
 
 
 keepSpaces : Parser String
 keepSpaces =
-    keep oneOrMore (\c -> c == ' ')
+    lazy <|
+        \() ->
+            keep zeroOrMore (\c -> c == ' ')
 
 
 
