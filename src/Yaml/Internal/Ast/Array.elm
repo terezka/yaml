@@ -19,9 +19,9 @@ type alias Array value =
 parser : Parser value -> Parser (Array value)
 parser value =
     succeed (\i v -> elements value i [ v ])
-        |. elementBeginning
+        |. symbol "-"
         |= getCol
-        |= value
+        |= element value
         |. newLine
         |> andThen identity
 
@@ -38,14 +38,17 @@ nextElement : Parser value -> Int -> Parser value
 nextElement value indent =
     delayedCommit (spacesOf indent) <|
         succeed identity
-            |. elementBeginning
-            |= value
+            |. symbol "-"
+            |= element value
             |. newLine
 
 
-elementBeginning : Parser ()
-elementBeginning =
-    symbol "-" |. ignore (Exactly 1) (\c -> c == ' ')
+element : Parser value -> Parser value
+element value =
+    oneOf
+        [ succeed identity |. newLine |. spaces |= value
+        , succeed identity |. oneSpace |= value
+        ]
 
 
 
@@ -54,12 +57,17 @@ elementBeginning =
 
 spacesOf : Int -> Parser ()
 spacesOf indent =
-    ignore (Exactly (indent - 3)) (\c -> c == ' ')
+    ignore (Exactly (indent - 2)) (\c -> c == ' ')
 
 
 spaces : Parser ()
 spaces =
     ignore zeroOrMore (\c -> c == ' ')
+
+
+oneSpace : Parser ()
+oneSpace =
+    ignore (Exactly 1) (\c -> c == ' ')
 
 
 newLine : Parser ()
