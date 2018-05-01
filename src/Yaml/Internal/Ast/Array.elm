@@ -18,12 +18,20 @@ type alias Array value =
 {-| -}
 parser : Parser value -> Parser (Array value)
 parser value =
-    element value
-        |> andThen
-            (\v ->
-                getCol
-                    |> andThen (\i -> withIndentLevel i (elements value [ v ]))
-            )
+    -- TODO
+    succeed (parserWithIndent value)
+        |. elementBeginning
+        |= getCol
+        |. spaces
+        |= value
+        |. ignoreUntilNewLine
+        |> andThen identity
+
+
+parserWithIndent : Parser value -> Int -> value -> Parser (Array value)
+parserWithIndent value indent v =
+    -- TODO
+    withIndentLevel (indent - 2) (elements value [ v ])
 
 
 elements : Parser value -> Array value -> Parser (Array value)
