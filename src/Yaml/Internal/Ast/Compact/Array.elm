@@ -48,4 +48,4 @@ nextElement value =
 
 spaces : Parser ()
 spaces =
-    ignore zeroOrMore (\char -> char == ' ')
+    ignore zeroOrMore (\c -> c == ' ')

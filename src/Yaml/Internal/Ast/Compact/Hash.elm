@@ -70,11 +70,8 @@ fieldName =
 
 
 isVarChar : Char -> Bool
-isVarChar char =
-    Char.isLower char
-        || Char.isUpper char
-        || Char.isDigit char
-        || (char == '_')
+isVarChar c =
+    Char.isLower c || Char.isUpper c || Char.isDigit c || c == '_'
 
 
 keywords : Set.Set String
@@ -88,4 +85,4 @@ keywords =
 
 spaces : Parser ()
 spaces =
-    ignore zeroOrMore (\char -> char == ' ')
+    ignore zeroOrMore (\c -> c == ' ')

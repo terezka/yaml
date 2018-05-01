@@ -34,25 +34,22 @@ nextString maybeEndChar =
 
 stringHead : Parser String
 stringHead =
-    keep (Exactly 1) <|
-        \char ->
-            char /= ',' && char /= '\n' && char /= ' '
+    keep (Exactly 1) <| \char -> char /= ',' && char /= '\n' && char /= ' '
 
 
 stringTail : Maybe Char -> Parser String
 stringTail maybeEndChar =
-    let
-        endCondition char =
-            case maybeEndChar of
-                Just endChar ->
-                    char /= endChar
+    keep oneOrMore <| \char -> char /= ',' && char /= '\n' && char /= ' ' && endCondition maybeEndChar char
 
-                Nothing ->
-                    False
-    in
-    keep oneOrMore <|
-        \char ->
-            endCondition char && char /= ',' && char /= '\n' && char /= ' '
+
+endCondition : Maybe Char -> Char -> Bool
+endCondition maybeEndChar char =
+    case maybeEndChar of
+        Just endChar ->
+            char /= endChar
+
+        Nothing ->
+            False
 
 
 

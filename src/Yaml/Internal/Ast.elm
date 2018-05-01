@@ -86,14 +86,14 @@ value endChar =
 
 spaces : Parser ()
 spaces =
-    ignore zeroOrMore (\char -> char == ' ')
+    ignore zeroOrMore (\c -> c == ' ')
 
 
 spacesOrNewLines : Parser ()
 spacesOrNewLines =
-    ignore zeroOrMore (\char -> char == ' ' || String.fromChar char == "\n")
+    ignore zeroOrMore (\c -> c == ' ' || String.fromChar c == "\n")
 
 
 ignoreUntilNewLine : Parser ()
 ignoreUntilNewLine =
-    ignore zeroOrMore (\char -> char /= '\n')
+    ignore zeroOrMore (\c -> c /= '\n')
