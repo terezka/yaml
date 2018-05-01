@@ -12,13 +12,20 @@ main =
 
 test : Result Parser.Error Ast.Ast
 test =
-    Ast.build
-        """--- trash
-        - hey
-        - { ok: rhejkt, hrekwr: f}
+    Ast.build test2
 
 
-        """
+test2 : String
+test2 =
+    """--- trash
+
+- aaa
+-
+    - bbb
+    - ccc
+
+
+"""
 
 
 test1 : String
