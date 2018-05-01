@@ -19,9 +19,9 @@ test2 : String
 test2 =
     """--- trash
 
-- aaa
-- bbb
-    - ccc
+ - aaa
+ - bbb
+ - ccc
 
 
 """

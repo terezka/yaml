@@ -79,7 +79,7 @@ parser : Parser Ast
 parser =
     succeed identity
         |. beginning
-        |= value Nothing 0
+        |= valueTopLevel
         |. spacesOrNewLines
         |. end
 
@@ -110,27 +110,31 @@ threeDashes =
 -- VALUES
 
 
-value : Maybe Char -> Int -> Parser Ast
-value endChar indent =
+valueTopLevel : Parser Ast
+valueTopLevel =
     lazy <|
         \() ->
-            succeed identity
-                |. spacesOf indent
-                |= oneOf
-                    [ map Array <| Array.parser (value Nothing 0)
-                    , map Hash <| CompactHash.parser <| value (Just '}') indent
-                    , map Array <| CompactArray.parser <| value (Just ']') indent
-                    , map Primitive <| CompactString.parser endChar
-                    ]
+            oneOf
+                [ map Array <| Array.parser valueTopLevel
+                , map Hash <| CompactHash.parser (valueCompact '}')
+                , map Array <| CompactArray.parser (valueCompact ']')
+                , map Primitive <| CompactString.parser Nothing
+                ]
+
+
+valueCompact : Char -> Parser Ast
+valueCompact endChar =
+    lazy <|
+        \() ->
+            oneOf
+                [ map Hash <| CompactHash.parser (valueCompact '}')
+                , map Array <| CompactArray.parser (valueCompact ']')
+                , map Primitive <| CompactString.parser (Just endChar)
+                ]
 
 
 
 -- GENERAL
-
-
-spacesOf : Int -> Parser ()
-spacesOf indent =
-    ignore (Exactly indent) (\c -> c == ' ')
 
 
 spaces : Parser ()

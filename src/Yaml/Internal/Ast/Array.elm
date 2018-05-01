@@ -18,42 +18,29 @@ type alias Array value =
 {-| -}
 parser : Parser value -> Parser (Array value)
 parser value =
-    -- TODO
-    succeed (parserWithIndent value)
+    succeed (\i v -> elements value i [ v ])
         |. elementBeginning
         |= getCol
-        |. spaces
         |= value
-        |. ignoreUntilNewLine
+        |. newLine
         |> andThen identity
 
 
-parserWithIndent : Parser value -> Int -> value -> Parser (Array value)
-parserWithIndent value indent v =
-    -- TODO
-    withIndentLevel (indent - 2) (elements value [ v ])
-
-
-elements : Parser value -> Array value -> Parser (Array value)
-elements value revElements =
+elements : Parser value -> Int -> Array value -> Parser (Array value)
+elements value indent revElements =
     oneOf
-        [ andThen (\n -> elements value (n :: revElements)) (nextElement value)
+        [ andThen (\n -> elements value indent (n :: revElements)) (nextElement value indent)
         , succeed (List.reverse revElements)
         ]
 
 
-nextElement : Parser value -> Parser value
-nextElement value =
-    delayedCommit spaces (element value)
-
-
-element : Parser value -> Parser value
-element value =
-    succeed identity
-        |. elementBeginning
-        |. spaces
-        |= value
-        |. ignoreUntilNewLine
+nextElement : Parser value -> Int -> Parser value
+nextElement value indent =
+    delayedCommit (spacesOf indent) <|
+        succeed identity
+            |. elementBeginning
+            |= value
+            |. newLine
 
 
 elementBeginning : Parser ()
@@ -65,11 +52,16 @@ elementBeginning =
 -- HELPERS
 
 
+spacesOf : Int -> Parser ()
+spacesOf indent =
+    ignore (Exactly (indent - 3)) (\c -> c == ' ')
+
+
 spaces : Parser ()
 spaces =
     ignore zeroOrMore (\c -> c == ' ')
 
 
-ignoreUntilNewLine : Parser ()
-ignoreUntilNewLine =
-    spaces |. ignore (Exactly 1) (\c -> c == '\n')
+newLine : Parser ()
+newLine =
+    ignore (Exactly 1) (\c -> c == '\n')
