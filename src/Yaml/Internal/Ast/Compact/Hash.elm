@@ -23,7 +23,7 @@ type alias Property value =
 
 
 {-| -}
-parser : (Char -> Parser value) -> Parser (Hash value)
+parser : Parser value -> Parser (Hash value)
 parser value =
     succeed identity
         |. symbol "{"
@@ -33,7 +33,7 @@ parser value =
         |. symbol "}"
 
 
-properties : (Char -> Parser value) -> List (Property value) -> Parser (Hash value)
+properties : Parser value -> List (Property value) -> Parser (Hash value)
 properties value revProperties =
     oneOf
         [ andThen (\n -> properties value (n :: revProperties)) (nextProperty value)
@@ -41,7 +41,7 @@ properties value revProperties =
         ]
 
 
-nextProperty : (Char -> Parser value) -> Parser (Property value)
+nextProperty : Parser value -> Parser (Property value)
 nextProperty value =
     delayedCommit spaces <|
         succeed identity
@@ -50,14 +50,14 @@ nextProperty value =
             |= property value
 
 
-property : (Char -> Parser value) -> Parser (Property value)
+property : Parser value -> Parser (Property value)
 property value =
     succeed (,)
         |= fieldName
         |. spaces
         |. oneOf [ symbol ":", spaces ]
         |. spaces
-        |= value '}'
+        |= value
 
 
 

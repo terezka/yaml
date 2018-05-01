@@ -29,7 +29,7 @@ parser : Parser Ast
 parser =
     succeed identity
         |. beginning
-        |= value
+        |= topLevelValue
         |. spacesOrNewLines
         |. end
 
@@ -60,25 +60,23 @@ threeDashes =
 -- VALUES
 
 
-value : Parser Ast
-value =
+topLevelValue : Parser Ast
+topLevelValue =
+    oneOf
+        [ map Hash <| CompactHash.parser (value '}')
+        , map Array <| CompactArray.parser (value ']')
+        , map Primitive <| CompactString.parser Nothing
+        ]
+
+
+value : Char -> Parser Ast
+value endChar =
     lazy <|
         \() ->
             oneOf
-                [ map Hash (CompactHash.parser valueInner)
-                , map Array (CompactArray.parser valueInner)
-                , map Primitive (CompactString.parser Nothing)
-                ]
-
-
-valueInner : Char -> Parser Ast
-valueInner endChar =
-    lazy <|
-        \() ->
-            oneOf
-                [ map Hash (CompactHash.parser valueInner)
-                , map Array (CompactArray.parser valueInner)
-                , map Primitive (CompactString.parser (Just endChar))
+                [ map Hash <| CompactHash.parser (value '}')
+                , map Array <| CompactArray.parser (value ']')
+                , map Primitive <| CompactString.parser (Just endChar)
                 ]
 
 

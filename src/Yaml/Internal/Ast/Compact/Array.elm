@@ -15,17 +15,17 @@ type alias Array value =
 
 
 {-| -}
-parser : (Char -> Parser value) -> Parser (Array value)
+parser : Parser value -> Parser (Array value)
 parser value =
     succeed identity
         |. symbol "["
         |. spaces
-        |= andThen (\n -> elements value [ n ]) (value ']')
+        |= andThen (\n -> elements value [ n ]) value
         |. spaces
         |. symbol "]"
 
 
-elements : (Char -> Parser value) -> Array value -> Parser (Array value)
+elements : Parser value -> Array value -> Parser (Array value)
 elements value revElements =
     oneOf
         [ andThen (\n -> elements value (n :: revElements)) (nextElement value)
@@ -33,13 +33,13 @@ elements value revElements =
         ]
 
 
-nextElement : (Char -> Parser value) -> Parser value
+nextElement : Parser value -> Parser value
 nextElement value =
     delayedCommit spaces <|
         succeed identity
             |. symbol ","
             |. spaces
-            |= value ']'
+            |= value
 
 
 
