@@ -63,6 +63,4 @@ spaces =
 
 keepSpaces : Parser String
 keepSpaces =
-    lazy <|
-        \() ->
-            keep zeroOrMore (\c -> c == ' ')
+    keep zeroOrMore (\c -> c == ' ')
