@@ -50,15 +50,25 @@ viewAst indent ast =
             String.repeat indent " " ++ text
 
         Hash properties ->
-            "{ " ++ (List.map (viewProperty indent) properties |> String.join ", ") ++ " }"
+            "{ " ++ viewProperties indent properties ++ " }"
 
         Array elements ->
-            "[ " ++ (List.map (viewAst indent) elements |> String.join ", ") ++ " ]"
+            "[ " ++ viewElements indent elements ++ " ]"
+
+
+viewProperties : Int -> List ( String, Ast ) -> String
+viewProperties indent =
+    String.join ", " << List.map (viewProperty indent)
 
 
 viewProperty : Int -> ( String, Ast ) -> String
 viewProperty indent ( property, value ) =
     String.repeat indent " " ++ property ++ ": " ++ viewAst (indent + 2) value
+
+
+viewElements : Int -> List Ast -> String
+viewElements indent =
+    String.join ", " << List.map (viewAst indent)
 
 
 
