@@ -44,8 +44,8 @@ nextElement value indent =
 element : Parser value -> Parser value
 element value =
     oneOf
-        [ succeed identity |. newLine |. spaces |= value
-        , succeed identity |. oneSpace |= value |. newLine
+        [ succeed identity |. oneSpace |= value |. newLine
+        , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
         ]
 
 
@@ -71,3 +71,8 @@ oneSpace =
 newLine : Parser ()
 newLine =
     ignore (Exactly 1) (\c -> c == '\n')
+
+
+spacesOrNewLines : Parser ()
+spacesOrNewLines =
+    ignore zeroOrMore (\c -> c == ' ' || String.fromChar c == "\n")
