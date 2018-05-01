@@ -1,12 +1,14 @@
-module Yaml.Internal.Ast exposing (Ast, build)
+module Yaml.Internal.Ast exposing (Ast, build, view)
 
 {-|
 
-@docs Ast, build
+@docs Ast, build, view
 
 -}
 
+import Html
 import Parser exposing (..)
+import Yaml.Internal.Ast.Array as Array
 import Yaml.Internal.Ast.Compact.Array as CompactArray
 import Yaml.Internal.Ast.Compact.Hash as CompactHash
 import Yaml.Internal.Ast.Compact.String as CompactString
@@ -25,11 +27,49 @@ build =
     run parser
 
 
+
+-- PRINT
+
+
+{-| -}
+view : Result Error Ast -> Html.Html msg
+view result =
+    Html.code [] <|
+        case result of
+            Ok ast ->
+                [ Html.text (viewAst 0 ast) ]
+
+            Err error ->
+                [ Html.text (toString error) ]
+
+
+viewAst : Int -> Ast -> String
+viewAst indent ast =
+    case ast of
+        Primitive text ->
+            String.repeat indent " " ++ text
+
+        Hash properties ->
+            "{ " ++ (List.map (viewProperty indent) properties |> String.join ", ") ++ " }"
+
+        Array elements ->
+            "[ " ++ (List.map (viewAst indent) elements |> String.join ", ") ++ " ]"
+
+
+viewProperty : Int -> ( String, Ast ) -> String
+viewProperty indent ( property, value ) =
+    String.repeat indent " " ++ property ++ ": " ++ viewAst (indent + 2) value
+
+
+
+-- PARSER
+
+
 parser : Parser Ast
 parser =
     succeed identity
         |. beginning
-        |= topLevelValue
+        |= value
         |. spacesOrNewLines
         |. end
 
@@ -60,22 +100,26 @@ threeDashes =
 -- VALUES
 
 
-topLevelValue : Parser Ast
-topLevelValue =
-    oneOf
-        [ map Hash <| CompactHash.parser (value '}')
-        , map Array <| CompactArray.parser (value ']')
-        , map Primitive <| CompactString.parser Nothing
-        ]
-
-
-value : Char -> Parser Ast
-value endChar =
+value : Parser Ast
+value =
     lazy <|
         \() ->
             oneOf
-                [ map Hash <| CompactHash.parser (value '}')
-                , map Array <| CompactArray.parser (value ']')
+                [ map Array <| Array.parser value
+                , map Hash <| CompactHash.parser (valueInside '}')
+                , map Array <| CompactArray.parser (valueInside ']')
+                , map Primitive <| CompactString.parser Nothing
+                ]
+
+
+valueInside : Char -> Parser Ast
+valueInside endChar =
+    lazy <|
+        \() ->
+            oneOf
+                [ map Array <| Array.parser value
+                , map Hash <| CompactHash.parser (valueInside '}')
+                , map Array <| CompactArray.parser (valueInside ']')
                 , map Primitive <| CompactString.parser (Just endChar)
                 ]
 

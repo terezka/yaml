@@ -39,17 +39,17 @@ stringHead =
 
 stringTail : Maybe Char -> Parser String
 stringTail maybeEndChar =
-    keep oneOrMore <| \char -> char /= ',' && char /= '\n' && char /= ' ' && endCondition maybeEndChar char
+    keep oneOrMore <| \char -> char /= ',' && char /= '\n' && char /= ' ' && isNotEnd maybeEndChar char
 
 
-endCondition : Maybe Char -> Char -> Bool
-endCondition maybeEndChar char =
+isNotEnd : Maybe Char -> Char -> Bool
+isNotEnd maybeEndChar char =
     case maybeEndChar of
         Just endChar ->
             char /= endChar
 
         Nothing ->
-            False
+            True
 
 
 
