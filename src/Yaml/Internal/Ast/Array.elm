@@ -16,37 +16,37 @@ type alias Array value =
 
 
 {-| -}
-parser : Parser value -> Parser (Array value)
-parser value =
-    succeed (\i v -> elements value i [ v ])
+parser : Parser value -> Parser value -> Parser (Array value)
+parser inline value =
+    succeed (\i v -> elements inline value i [ v ])
         |. symbol "-"
         |= getCol
-        |= element value
+        |= element inline value
         |> andThen identity
 
 
-element : Parser value -> Parser value
-element value =
+element : Parser value -> Parser value -> Parser value
+element inline value =
     oneOf
-        [ succeed identity |. oneSpace |= value |. newLine
+        [ succeed identity |. oneSpace |= inline |. newLine
         , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
         ]
 
 
-elements : Parser value -> Int -> Array value -> Parser (Array value)
-elements value indent revElements =
+elements : Parser value -> Parser value -> Int -> Array value -> Parser (Array value)
+elements inline value indent revElements =
     oneOf
-        [ andThen (\n -> elements value indent (n :: revElements)) (nextElement value indent)
+        [ andThen (\n -> elements inline value indent (n :: revElements)) (nextElement inline value indent)
         , succeed (List.reverse revElements)
         ]
 
 
-nextElement : Parser value -> Int -> Parser value
-nextElement value indent =
+nextElement : Parser value -> Parser value -> Int -> Parser value
+nextElement inline value indent =
     delayedCommit (spacesOf indent) <|
         succeed identity
             |. symbol "-"
-            |= element value
+            |= element inline value
 
 
 

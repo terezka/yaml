@@ -116,7 +116,7 @@ valueTopLevel =
     lazy <|
         \() ->
             oneOf
-                [ map Array <| Array.parser valueTopLevel
+                [ map Array <| Array.parser (valueCompact '\n') valueTopLevel
                 , map Hash <| Hash.parser (valueCompact '\n') valueTopLevel
                 , map Hash <| CompactHash.parser (valueCompact '}')
                 , map Array <| CompactArray.parser (valueCompact ']')
