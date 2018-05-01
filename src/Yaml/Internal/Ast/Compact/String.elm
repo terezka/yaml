@@ -13,7 +13,7 @@ parser : Maybe Char -> Parser String
 parser maybeEndChar =
     succeed identity
         |. spaces
-        |= andThen (\n -> strings maybeEndChar [ n ]) stringHead
+        |= andThen (\n -> strings maybeEndChar [ n ]) (stringHead maybeEndChar)
         |. spaces
 
 
@@ -32,9 +32,9 @@ nextString maybeEndChar =
             |= stringTail maybeEndChar
 
 
-stringHead : Parser String
-stringHead =
-    keep (Exactly 1) <| \char -> char /= ',' && char /= '\n' && char /= ' '
+stringHead : Maybe Char -> Parser String
+stringHead maybeEndChar =
+    keep (Exactly 1) <| \char -> char /= ',' && char /= '\n' && char /= ' ' && isNotEnd maybeEndChar char
 
 
 stringTail : Maybe Char -> Parser String

@@ -8,8 +8,6 @@ module Yaml.Internal.Ast.Compact.Hash exposing (Hash, Property, parser)
 
 import Char
 import Parser exposing (..)
-import Parser.LanguageKit as Parser exposing (..)
-import Set
 
 
 {-| -}
@@ -28,9 +26,17 @@ parser value =
     succeed identity
         |. symbol "{"
         |. spaces
-        |= andThen (\n -> properties value [ n ]) (property value)
+        |= firstProperty value
         |. spaces
         |. symbol "}"
+
+
+firstProperty : Parser value -> Parser (Hash value)
+firstProperty value =
+    oneOf
+        [ andThen (\n -> properties value [ n ]) (property value)
+        , succeed []
+        ]
 
 
 properties : Parser value -> List (Property value) -> Parser (Hash value)
@@ -66,17 +72,12 @@ property value =
 
 fieldName : Parser String
 fieldName =
-    variable (always True) isVarChar keywords
+    keep oneOrMore isVarChar
 
 
 isVarChar : Char -> Bool
 isVarChar c =
     Char.isLower c || Char.isUpper c || Char.isDigit c || c == '_'
-
-
-keywords : Set.Set String
-keywords =
-    Set.empty
 
 
 

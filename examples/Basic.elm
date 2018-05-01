@@ -12,7 +12,25 @@ main =
 
 test : Result Parser.Error Ast.Ast
 test =
-    Ast.build test2
+    Ast.build test3
+
+
+test3 : String
+test3 =
+    """--- trash
+    {}
+
+
+    """
+
+
+test1 : String
+test1 =
+    """--- trash
+    { hey: hey, ok: wow, [ abc def, ghi j[klm ] }
+
+
+    """
 
 
 test2 : String
@@ -34,12 +52,3 @@ test2 =
 
 
 """
-
-
-test1 : String
-test1 =
-    """--- trash
-    { hey: hey, ok: wow, [ abc def, ghi j[klm ] }
-
-
-    """

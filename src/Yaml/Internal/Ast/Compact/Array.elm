@@ -20,9 +20,17 @@ parser value =
     succeed identity
         |. symbol "["
         |. spaces
-        |= andThen (\n -> elements value [ n ]) value
+        |= firstElement value
         |. spaces
         |. symbol "]"
+
+
+firstElement : Parser value -> Parser (Array value)
+firstElement value =
+    oneOf
+        [ andThen (\n -> elements value [ n ]) value
+        , succeed []
+        ]
 
 
 elements : Parser value -> Array value -> Parser (Array value)
