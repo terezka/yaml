@@ -25,6 +25,14 @@ parser value =
         |> andThen identity
 
 
+element : Parser value -> Parser value
+element value =
+    oneOf
+        [ succeed identity |. oneSpace |= value |. newLine
+        , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
+        ]
+
+
 elements : Parser value -> Int -> Array value -> Parser (Array value)
 elements value indent revElements =
     oneOf
@@ -39,14 +47,6 @@ nextElement value indent =
         succeed identity
             |. symbol "-"
             |= element value
-
-
-element : Parser value -> Parser value
-element value =
-    oneOf
-        [ succeed identity |. oneSpace |= value |. newLine
-        , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
-        ]
 
 
 

@@ -12,16 +12,23 @@ main =
 
 test : Result Parser.Error Ast.Ast
 test =
-    Ast.build test1
+    Ast.build test3
 
 
 test3 : String
 test3 =
     """--- trash
-    id:
-        bioguide: B000944
-        thomas: 00136
-        lis: S307
+aaa:
+    bbb: { hey: ok }
+    ddd: { hey: ok }
+kkk: {}
+jjj: []
+iii:
+  hhh: hhh
+  aaa: rrr
+  ccc:
+    vvv: vvv
+    ggg: ggg
 
 
     """

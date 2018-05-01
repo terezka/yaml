@@ -12,6 +12,7 @@ import Yaml.Internal.Ast.Array as Array
 import Yaml.Internal.Ast.Compact.Array as CompactArray
 import Yaml.Internal.Ast.Compact.Hash as CompactHash
 import Yaml.Internal.Ast.Compact.String as CompactString
+import Yaml.Internal.Ast.Hash as Hash
 
 
 {-| -}
@@ -116,6 +117,7 @@ valueTopLevel =
         \() ->
             oneOf
                 [ map Array <| Array.parser valueTopLevel
+                , map Hash <| Hash.parser (valueCompact '\n') valueTopLevel
                 , map Hash <| CompactHash.parser (valueCompact '}')
                 , map Array <| CompactArray.parser (valueCompact ']')
                 , map Primitive <| CompactString.parser Nothing
