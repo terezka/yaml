@@ -20,8 +20,7 @@ test2 =
     """--- trash
 
 - aaa
--
-    - bbb
+- bbb
     - ccc
 
 
