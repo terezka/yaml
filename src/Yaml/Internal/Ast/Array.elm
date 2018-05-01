@@ -22,7 +22,6 @@ parser value =
         |. symbol "-"
         |= getCol
         |= element value
-        |. newLine
         |> andThen identity
 
 
@@ -40,14 +39,13 @@ nextElement value indent =
         succeed identity
             |. symbol "-"
             |= element value
-            |. newLine
 
 
 element : Parser value -> Parser value
 element value =
     oneOf
         [ succeed identity |. newLine |. spaces |= value
-        , succeed identity |. oneSpace |= value
+        , succeed identity |. oneSpace |= value |. newLine
         ]
 
 

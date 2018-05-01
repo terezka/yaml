@@ -21,8 +21,9 @@ test2 =
 
 - aaa
 -
-     - bbb
-     - ccc
+    - bbb
+- ccc
+- ddd
 
 
 """
