@@ -18,7 +18,7 @@ type alias Array value =
 {-| -}
 parser : Parser value -> Parser value -> Parser (Array value)
 parser inline value =
-    succeed (\i v -> elements inline value i [ Debug.log "v" <| v ])
+    succeed (\i v -> elements inline value i [ v ])
         |. symbol "-"
         |= getCol
         |= element inline value
@@ -28,7 +28,7 @@ parser inline value =
 element : Parser value -> Parser value -> Parser value
 element inline value =
     oneOf
-        [ map (Debug.log "in") <| succeed identity |. oneSpace |= inline |. newLine
+        [ succeed identity |. oneSpace |= inline |. newLine
         , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
         ]
 
@@ -44,7 +44,7 @@ elements inline value indent revElements =
 nextElement : Parser value -> Parser value -> Int -> Parser value
 nextElement inline value indent =
     delayedCommit (spacesOf indent) <|
-        succeed (Debug.log "v")
+        succeed identity
             |. symbol "-"
             |= element inline value
 
