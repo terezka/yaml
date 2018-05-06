@@ -12,9 +12,7 @@ main =
 test4 : String
 test4 =
     """--- trash
-- id:
-    aaa: aaa
-    bbb: bbb
+hey
 
     """
 

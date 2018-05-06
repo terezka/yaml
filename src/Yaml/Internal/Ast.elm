@@ -1,4 +1,4 @@
-module Yaml.Internal.Ast exposing (Ast, build, view)
+module Yaml.Internal.Ast exposing (Ast(..), build, view)
 
 {-|
 
@@ -117,10 +117,10 @@ valueTopLevel =
         \() ->
             oneOf
                 [ map Array <| Array.parser (valueInline '\n') valueTopLevel
-                , map Hash <| Hash.parser (valueInline '\n') valueTopLevel
                 , map Hash <| InlineHash.parser (valueInline '}')
                 , map Array <| InlineArray.parser (valueInline ']')
                 , map Primitive <| InlineString.parser Nothing
+                , map Hash <| Hash.parser (valueInline '\n') valueTopLevel
                 ]
 
 

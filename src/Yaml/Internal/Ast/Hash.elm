@@ -25,7 +25,7 @@ type alias Property value =
 parser : Parser value -> Parser value -> Parser (Hash value)
 parser inline value =
     succeed (\f i v -> properties inline value (i - String.length f) [ ( f, v ) ])
-        |= fieldName
+        |= map (Debug.log "here") fieldName
         |= getCol
         |. spaces
         |. symbol ":"
