@@ -74,35 +74,28 @@ valueTopLevel =
                 [ map Array <| Array.parser (valueInline '\n') valueTopLevel
                 , map Hash <| InlineHash.parser (valueInline '}')
                 , map Array <| InlineArray.parser (valueInline ']')
-                , stringOrHash
+                , andThen stringOrHash <| Hash.fieldName
+                , map Primitive <| InlineString.parser Nothing
                 ]
 
 
-stringOrHash : Parser Ast
-stringOrHash =
+stringOrHash : String -> Parser Ast
+stringOrHash s0 =
     let
-        parseHash fieldName spaces =
-            map Hash <| Hash.parser (valueInline '\n') valueTopLevel fieldName spaces
+        parseHash spaces =
+            map Hash <| Hash.parser (valueInline '\n') valueTopLevel s0 spaces
 
-        parseString s0 s1 =
-            map (finishString s0 s1) <| InlineString.parser (Just '\n')
+        done s1 s2 =
+            succeed (Primitive (s0 ++ s2 ++ s1))
 
-        finishString s0 s1 s2 =
-            Primitive (s0 ++ s1 ++ s2)
-
-        done s0 s1 =
-            succeed (Primitive s0)
-
-        finish s0 s1 parser =
-            parser s0 s1
+        finish s1 parser =
+            parser s1
     in
     succeed finish
-        |= Hash.fieldName
         |= keepSpaces
         |= oneOf
             [ succeed parseHash |. symbol ":"
-            , succeed done |. symbol "\n"
-            , succeed parseString
+            , succeed done |= keepUntilNewLine
             ]
         |> andThen identity
 
@@ -114,6 +107,7 @@ valueInline endChar =
             oneOf
                 [ map Hash <| InlineHash.parser (valueInline '}')
                 , map Array <| InlineArray.parser (valueInline ']')
+                , andThen stringOrHash <| Hash.fieldName
                 , map Primitive <| InlineString.parser (Just endChar)
                 ]
 
@@ -130,6 +124,11 @@ keepSpaces =
 spaces : Parser ()
 spaces =
     ignore zeroOrMore (\c -> c == ' ')
+
+
+keepUntilNewLine : Parser String
+keepUntilNewLine =
+    keep zeroOrMore (\c -> c /= '\n')
 
 
 spacesOrNewLines : Parser ()

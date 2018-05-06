@@ -25,8 +25,8 @@ type alias Property value =
 parser : Parser value -> Parser value -> String -> String -> Parser (Hash value)
 parser inline value fieldName spaces =
     let
-        getCorrectCol ind =
-            ind - String.length fieldName - String.length spaces
+        getCorrectCol i =
+            i - String.length fieldName - String.length spaces
     in
     succeed (\i v -> properties inline value (getCorrectCol i) [ ( fieldName, v ) ])
         |= getCol
@@ -37,7 +37,7 @@ parser inline value fieldName spaces =
 propertyValue : Parser value -> Parser value -> Parser value
 propertyValue inline value =
     oneOf
-        [ succeed identity |= inline |. newLine
+        [ succeed identity |= inline
         , succeed identity |. spaces |. newLine |. spacesOrNewLines |= value
         ]
 

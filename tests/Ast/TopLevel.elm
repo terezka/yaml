@@ -82,4 +82,44 @@ topLevelArrays =
                          - b
                         - c
                         """
+        , test "with wrong indention on second level" <|
+            \_ ->
+                Expect.err <|
+                    Ast.build
+                        """
+                        - a
+                        -
+                            - a
+                             - b
+                            - c
+                        - c
+                        """
+        , test "with hashes inside" <|
+            \_ ->
+                let
+                    expected =
+                        Ast.Array
+                            [ Ast.Primitive "a"
+                            , Ast.Hash
+                                [ ( "b"
+                                  , Ast.Hash
+                                        [ ( "a", Ast.Primitive "1" )
+                                        , ( "b", Ast.Primitive "2" )
+                                        , ( "c", Ast.Primitive "3" )
+                                        ]
+                                  )
+                                ]
+                            , Ast.Primitive "c"
+                            ]
+                in
+                Expect.equal (Ok expected) <|
+                    Ast.build
+                        """
+                        - a
+                        - b:
+                            a: 1
+                            b: 2
+                            c: 3
+                        - c
+                        """
         ]
