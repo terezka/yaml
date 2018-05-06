@@ -1,8 +1,8 @@
-module Yaml.Internal.Ast exposing (Ast(..), build, view)
+module Yaml.Internal.Ast exposing (Ast(..), build)
 
 {-|
 
-@docs Ast, build, view
+@docs Ast, build
 
 -}
 
@@ -26,50 +26,6 @@ type Ast
 build : String -> Result Error Ast
 build =
     run parser
-
-
-
--- PRINT
-
-
-{-| -}
-view : Result Error Ast -> Html.Html msg
-view result =
-    Html.code [] <|
-        case result of
-            Ok ast ->
-                [ Html.text (viewAst 0 ast) ]
-
-            Err error ->
-                [ Html.text (toString error) ]
-
-
-viewAst : Int -> Ast -> String
-viewAst indent ast =
-    case ast of
-        Primitive text ->
-            String.repeat indent " " ++ text
-
-        Hash properties ->
-            "{ " ++ viewProperties indent properties ++ " }"
-
-        Array elements ->
-            "[ " ++ viewElements indent elements ++ " ]"
-
-
-viewProperties : Int -> List ( String, Ast ) -> String
-viewProperties indent =
-    String.join ", " << List.map (viewProperty indent)
-
-
-viewProperty : Int -> ( String, Ast ) -> String
-viewProperty indent ( property, value ) =
-    String.repeat indent " " ++ property ++ ": " ++ viewAst (indent + 2) value
-
-
-viewElements : Int -> List Ast -> String
-viewElements indent =
-    String.join ", " << List.map (viewAst indent)
 
 
 
