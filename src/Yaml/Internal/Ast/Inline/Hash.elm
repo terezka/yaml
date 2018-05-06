@@ -77,7 +77,7 @@ fieldName =
 
 isVarChar : Char -> Bool
 isVarChar c =
-    Char.isLower c || Char.isUpper c || Char.isDigit c || c == '_'
+    Char.isLower c || Char.isUpper c || Char.isDigit c || c == '_' || c == '/' || c == '.'
 
 
 
