@@ -1,4 +1,4 @@
-module Yaml.Internal.Ast.Compact.String exposing (parser)
+module Yaml.Internal.Ast.Inline.String exposing (parser)
 
 {-|
 

@@ -1,28 +1,20 @@
 module Basic exposing (main)
 
 import Html
-import Parser
 import Yaml.Internal.Ast as Ast
 
 
 main : Html.Html msg
 main =
-    Ast.view test
-
-
-test : Result Parser.Error Ast.Ast
-test =
-    Ast.build test4
+    Ast.view (Ast.build test4)
 
 
 test4 : String
 test4 =
     """--- trash
-- aaa
--
-    - {}
-    - [bbb]
-
+- id:
+    aaa: aaa
+    bbb: bbb
 
     """
 

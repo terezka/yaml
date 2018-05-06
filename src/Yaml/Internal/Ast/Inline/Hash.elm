@@ -1,4 +1,4 @@
-module Yaml.Internal.Ast.Compact.Hash exposing (Hash, Property, parser)
+module Yaml.Internal.Ast.Inline.Hash exposing (Hash, Property, parser)
 
 {-|
 

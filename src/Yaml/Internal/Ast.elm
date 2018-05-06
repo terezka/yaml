@@ -9,10 +9,10 @@ module Yaml.Internal.Ast exposing (Ast, build, view)
 import Html
 import Parser exposing (..)
 import Yaml.Internal.Ast.Array as Array
-import Yaml.Internal.Ast.Compact.Array as CompactArray
-import Yaml.Internal.Ast.Compact.Hash as CompactHash
-import Yaml.Internal.Ast.Compact.String as CompactString
 import Yaml.Internal.Ast.Hash as Hash
+import Yaml.Internal.Ast.Inline.Array as InlineArray
+import Yaml.Internal.Ast.Inline.Hash as InlineHash
+import Yaml.Internal.Ast.Inline.String as InlineString
 
 
 {-| -}
@@ -116,22 +116,22 @@ valueTopLevel =
     lazy <|
         \() ->
             oneOf
-                [ map Array <| Array.parser (valueCompact '\n') valueTopLevel
-                , map Hash <| Hash.parser (valueCompact '\n') valueTopLevel
-                , map Hash <| CompactHash.parser (valueCompact '}')
-                , map Array <| CompactArray.parser (valueCompact ']')
-                , map Primitive <| CompactString.parser Nothing
+                [ map Array <| Array.parser (valueInline '\n') valueTopLevel
+                , map Hash <| Hash.parser (valueInline '\n') valueTopLevel
+                , map Hash <| InlineHash.parser (valueInline '}')
+                , map Array <| InlineArray.parser (valueInline ']')
+                , map Primitive <| InlineString.parser Nothing
                 ]
 
 
-valueCompact : Char -> Parser Ast
-valueCompact endChar =
+valueInline : Char -> Parser Ast
+valueInline endChar =
     lazy <|
         \() ->
             oneOf
-                [ map Hash <| CompactHash.parser (valueCompact '}')
-                , map Array <| CompactArray.parser (valueCompact ']')
-                , map Primitive <| CompactString.parser (Just endChar)
+                [ map Hash <| InlineHash.parser (valueInline '}')
+                , map Array <| InlineArray.parser (valueInline ']')
+                , map Primitive <| InlineString.parser (Just endChar)
                 ]
 
 

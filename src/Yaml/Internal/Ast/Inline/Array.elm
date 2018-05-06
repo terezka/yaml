@@ -1,4 +1,4 @@
-module Yaml.Internal.Ast.Compact.Array exposing (Array, parser)
+module Yaml.Internal.Ast.Inline.Array exposing (Array, parser)
 
 {-|
 
