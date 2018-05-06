@@ -6,7 +6,6 @@ module Yaml.Internal.Ast exposing (Ast(..), build)
 
 -}
 
-import Html
 import Parser exposing (..)
 import Yaml.Internal.Ast.Array as Array
 import Yaml.Internal.Ast.Hash as Hash
@@ -75,9 +74,37 @@ valueTopLevel =
                 [ map Array <| Array.parser (valueInline '\n') valueTopLevel
                 , map Hash <| InlineHash.parser (valueInline '}')
                 , map Array <| InlineArray.parser (valueInline ']')
-                , map Primitive <| InlineString.parser Nothing
-                , map Hash <| Hash.parser (valueInline '\n') valueTopLevel
+                , stringOrHash
                 ]
+
+
+stringOrHash : Parser Ast
+stringOrHash =
+    let
+        parseHash fieldName spaces =
+            map Hash <| Hash.parser (valueInline '\n') valueTopLevel fieldName spaces
+
+        parseString s0 s1 =
+            map (finishString s0 s1) <| InlineString.parser (Just '\n')
+
+        finishString s0 s1 s2 =
+            Primitive (s0 ++ s1 ++ s2)
+
+        done s0 s1 =
+            succeed (Primitive s0)
+
+        finish s0 s1 parser =
+            parser s0 s1
+    in
+    succeed finish
+        |= Hash.fieldName
+        |= keepSpaces
+        |= oneOf
+            [ succeed parseHash |. symbol ":"
+            , succeed done |. symbol "\n"
+            , succeed parseString
+            ]
+        |> andThen identity
 
 
 valueInline : Char -> Parser Ast
@@ -95,6 +122,11 @@ valueInline endChar =
 -- GENERAL
 
 
+keepSpaces : Parser String
+keepSpaces =
+    keep zeroOrMore (\c -> c == ' ')
+
+
 spaces : Parser ()
 spaces =
     ignore zeroOrMore (\c -> c == ' ')
@@ -102,7 +134,7 @@ spaces =
 
 spacesOrNewLines : Parser ()
 spacesOrNewLines =
-    ignore zeroOrMore (\c -> c == ' ' || String.fromChar c == "\n")
+    ignore zeroOrMore (\c -> c == ' ' || c == '\n')
 
 
 ignoreUntilNewLine : Parser ()

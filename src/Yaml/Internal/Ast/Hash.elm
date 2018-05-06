@@ -1,4 +1,4 @@
-module Yaml.Internal.Ast.Hash exposing (Hash, Property, parser)
+module Yaml.Internal.Ast.Hash exposing (Hash, Property, fieldName, parser)
 
 {-|
 
@@ -22,13 +22,14 @@ type alias Property value =
 
 
 {-| -}
-parser : Parser value -> Parser value -> Parser (Hash value)
-parser inline value =
-    succeed (\f i v -> properties inline value (i - String.length f) [ ( f, v ) ])
-        |= map (Debug.log "here") fieldName
+parser : Parser value -> Parser value -> String -> String -> Parser (Hash value)
+parser inline value fieldName spaces =
+    let
+        getCorrectCol ind =
+            ind - String.length fieldName - String.length spaces
+    in
+    succeed (\i v -> properties inline value (getCorrectCol i) [ ( fieldName, v ) ])
         |= getCol
-        |. spaces
-        |. symbol ":"
         |= propertyValue inline value
         |> andThen identity
 
