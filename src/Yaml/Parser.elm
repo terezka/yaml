@@ -32,7 +32,7 @@ parser : Parser Value
 parser =
   succeed identity
     |. documentBegins
-    |= yamlValue
+    |= yamlValueTopLevel
     |. documentEnds
 
 
@@ -69,9 +69,18 @@ documentEnds =
 -- YAML / VALUE
 
 
-yamlValue : Parser Value
-yamlValue =
-  succeed (String_ "hi")
+yamlValueTopLevel : Parser Value
+yamlValueTopLevel =
+  oneOf
+    [ yamlString
+    ]
+
+
+yamlString : Parser Value
+yamlString =
+  succeed ()
+    |. chompUntilEndOr "\n"
+    |> mapChompedString (\s _ -> String_ s)
 
 
 

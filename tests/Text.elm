@@ -19,7 +19,6 @@ testDocumentBegin =
   --- trash
 
   hfdjksfdh
-
   """
 
 
