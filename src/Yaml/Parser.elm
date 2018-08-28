@@ -186,7 +186,7 @@ yamlListInline =
 yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
 yamlListInlineEach values =
   succeed (\v next -> next (v :: values))
-    |= yamlValueInline ['\n']
+    |= yamlValueInline ['\n', ',', ']']
     |. actualSpaces
     |= oneOf
         [ succeed Loop
