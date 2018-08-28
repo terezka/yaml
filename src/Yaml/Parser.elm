@@ -33,7 +33,7 @@ parser : Parser Value
 parser =
   succeed identity
     |. documentBegins
-    |= yamlValue
+    |= andThen yamlValue getCol
     |. documentEnds
 
 
@@ -70,8 +70,8 @@ documentEnds =
 -- YAML / VALUE
 
 
-yamlValue : Parser Value
-yamlValue =
+yamlValue : Int -> Parser Value
+yamlValue indent =
   oneOf
     [ yamlList
     , yamlRecordInline
@@ -143,7 +143,7 @@ yamlListWithIndent indent =
 yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
 yamlListEach indent values =
   succeed (\v next -> next (v :: values))
-    |= yamlValueInline ['\n']
+    |= yamlListOne
     |. newLines
     |= oneOf
         [ succeed (Done << List.reverse)
@@ -155,6 +155,17 @@ yamlListEach indent values =
                 , succeed (Done << List.reverse) |. spaces
                 ]
         ]
+
+
+yamlListOne : Parser Value
+yamlListOne =
+  oneOf
+    [ succeed identity 
+        |. symbol "\n"
+        |. actualSpaces
+        |= andThen yamlValue getCol
+    , yamlValueInline ['\n']
+    ]
 
 
 
@@ -176,7 +187,7 @@ yamlListInline =
 yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
 yamlListInlineEach values =
   succeed (\v next -> next (v :: values))
-    |= yamlValueInline [',', ']', '\n']
+    |= yamlValueInline ['\n']
     |. actualSpaces
     |= oneOf
         [ succeed Loop
