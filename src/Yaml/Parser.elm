@@ -146,9 +146,7 @@ yamlListEach indent values =
     |= yamlListOne
     |. newLines
     |= oneOf
-        [ succeed (Done << List.reverse)
-            |. end
-        , succeed identity
+        [ succeed identity
             |. indention indent
             |= oneOf
                 [ succeed Loop |. symbol "- "
