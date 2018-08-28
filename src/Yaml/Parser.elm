@@ -72,7 +72,8 @@ documentEnds =
 yamlValueTopLevel : Parser Value
 yamlValueTopLevel =
   oneOf
-    [ yamlListInline
+    [ yamlRecordInline
+    , yamlListInline
     , yamlNumber
     , yamlString
     ]
@@ -81,7 +82,8 @@ yamlValueTopLevel =
 yamlValueInline : List Char -> Parser Value
 yamlValueInline endings =
   oneOf
-    [ yamlListInline
+    [ yamlRecordInline
+    , yamlListInline
     , yamlNumber
     , yamlStringUntil endings
     ]
@@ -98,9 +100,8 @@ yamlString =
 
 yamlStringUntil : List Char -> Parser Value
 yamlStringUntil endings =
-  succeed ()
-    |. chompWhile (\c -> not (List.member c endings))
-    |> mapChompedString (\string _ -> String_ string)
+  succeed String_ -- TODO trim?
+    |= stringUntil endings
 
 
 
@@ -147,6 +148,38 @@ yamlListInlineEach values =
 
 
 
+
+-- YAML / RECORD / INLINE
+
+
+yamlRecordInline : Parser Value
+yamlRecordInline =
+  succeed Record_
+    |. symbol "{"
+    |. spaces
+    |= loop [] yamlRecordInlineEach
+
+
+yamlRecordInlineEach : List Property -> Parser (Step (List Property) (List Property))
+yamlRecordInlineEach properties =
+  succeed (\n v next -> next (Property n v :: properties))
+    |= stringUntil [':']
+    |. symbol ":"
+    |. actualSpaces
+    |= yamlValueInline [',', '}', '\n']
+    |. actualSpaces
+    |= oneOf
+        [ succeed Loop
+            |. symbol ","
+        , succeed (Done << List.reverse)
+            |. symbol "}"
+        , succeed (Done << List.reverse) -- TODO When Parser.Advanced is available error
+            |. symbol "\n"
+        ]
+    |. actualSpaces
+
+
+
 -- COMMON
 
 
@@ -154,3 +187,9 @@ actualSpaces : Parser ()
 actualSpaces =
   chompWhile (\c -> c == ' ')
 
+
+stringUntil : List Char -> Parser String
+stringUntil endings =
+  succeed ()
+    |. chompWhile (\c -> not (List.member c endings))
+    |> getChompedString
