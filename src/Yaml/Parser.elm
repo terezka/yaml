@@ -127,8 +127,12 @@ yamlListInline : Parser Value
 yamlListInline =
   succeed List_
     |. symbol "["
-    |. spaces
-    |= loop [] yamlListInlineEach
+    |. actualSpaces
+    |= oneOf
+        [ succeed []
+            |. symbol "}"
+        , loop [] yamlListInlineEach
+        ]
 
 
 yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
@@ -156,8 +160,12 @@ yamlRecordInline : Parser Value
 yamlRecordInline =
   succeed Record_
     |. symbol "{"
-    |. spaces
-    |= loop [] yamlRecordInlineEach
+    |. actualSpaces
+    |= oneOf
+        [ succeed []
+            |. symbol "}"
+        , loop [] yamlRecordInlineEach
+        ]
 
 
 yamlRecordInlineEach : List Property -> Parser (Step (List Property) (List Property))

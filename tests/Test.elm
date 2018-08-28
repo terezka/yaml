@@ -25,7 +25,7 @@ testDocumentBegin =
 
   --- trash
 
-  { hey: 1, her3: f, 333:vfgdf}
+  [{ hey: 1, her3: f, 333:vfgdf}, {}, 3]
 
 
   """
