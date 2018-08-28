@@ -9,7 +9,7 @@ import Html
 
 TODO:
   - Numbers starting with 0
-
+  - Why does eee not parse? "ExpectingNumber"
 -}
 
 main : Html.Html msg 
@@ -28,9 +28,9 @@ testDocumentBegin =
 - aaa
 - 
   - ccc
-  - ddd
   - 
-    - hhh
+    - fff
+- hhh
 """
 
 

@@ -154,6 +154,7 @@ yamlListEach indent values =
                 [ succeed Loop |. symbol "- "
                 , succeed (Done << List.reverse) |. spaces
                 ]
+        , succeed (Done << List.reverse)
         ]
 
 
@@ -256,10 +257,10 @@ indention : Int -> Parser ()
 indention indent =
   let
     finish col =
-      if Debug.log "col" col == Debug.log "indent" indent then
+      if col == indent then
         succeed ()
       else
-        problem "Expected more indention"
+        problem "Wrong indention"
   in
   succeed identity
     |. actualSpaces
