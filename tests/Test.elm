@@ -25,7 +25,7 @@ testDocumentBegin =
 
   --- trash
 
-  4543.2
+  [ ffdsf1, 2, 3 ]
 
 
   """

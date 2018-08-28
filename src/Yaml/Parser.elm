@@ -43,8 +43,8 @@ parser =
 documentBegins : Parser ()
 documentBegins =
   oneOf 
-    [ whitespace |. threeDashesAndTrash |. whitespace
-    , whitespace
+    [ spaces |. threeDashesAndTrash |. spaces
+    , spaces
     ]
 
 
@@ -61,7 +61,7 @@ threeDashesAndTrash =
 documentEnds : Parser (a -> a)
 documentEnds =
   succeed identity
-    |. whitespace
+    |. spaces
     |. end
 
 
@@ -72,16 +72,39 @@ documentEnds =
 yamlValueTopLevel : Parser Value
 yamlValueTopLevel =
   oneOf
-    [ yamlNumber
+    [ yamlListInline
+    , yamlNumber
     , yamlString
     ]
 
 
+yamlValueInline : List Char -> Parser Value
+yamlValueInline endings =
+  oneOf
+    [ yamlListInline
+    , yamlNumber
+    , yamlStringUntil endings
+    ]
+
+
+
+-- YAML / STRING
+
+
 yamlString : Parser Value
 yamlString =
+  yamlStringUntil ['\n']
+
+
+yamlStringUntil : List Char -> Parser Value
+yamlStringUntil endings =
   succeed ()
-    |. chompUntilEndOr "\n"
+    |. chompWhile (\c -> not (List.member c endings))
     |> mapChompedString (\string _ -> String_ string)
+
+
+
+-- YAML / NUMBER
 
 
 yamlNumber : Parser Value
@@ -96,10 +119,38 @@ yamlNumber =
 
 
 
+-- YAML / LIST / INLINE
+
+
+yamlListInline : Parser Value
+yamlListInline =
+  succeed List_
+    |. symbol "["
+    |. spaces
+    |= loop [] yamlListInlineEach
+
+
+yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
+yamlListInlineEach values =
+  succeed (\v next -> next (v :: values))
+    |= yamlValueInline [',', ']', '\n']
+    |. actualSpaces
+    |= oneOf
+        [ succeed Loop
+            |. symbol "," 
+        , succeed (Done << List.reverse)
+            |. symbol "]"
+        , succeed (Done << List.reverse) -- TODO When Parser.Advanced is available error
+            |. chompIf (\c -> c == '\n')
+        ]
+    |. actualSpaces
+
+
+
 -- COMMON
 
 
-whitespace : Parser ()
-whitespace =
-  chompWhile (\c -> c == ' ' || c == '\t' || c == '\n' || c == '\r')
+actualSpaces : Parser ()
+actualSpaces =
+  chompWhile (\c -> c == ' ')
 
