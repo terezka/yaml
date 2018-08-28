@@ -72,7 +72,8 @@ documentEnds =
 yamlValueTopLevel : Parser Value
 yamlValueTopLevel =
   oneOf
-    [ yamlString
+    [ yamlNumber
+    , yamlString
     ]
 
 
@@ -80,7 +81,18 @@ yamlString : Parser Value
 yamlString =
   succeed ()
     |. chompUntilEndOr "\n"
-    |> mapChompedString (\s _ -> String_ s)
+    |> mapChompedString (\string _ -> String_ string)
+
+
+yamlNumber : Parser Value
+yamlNumber =
+  number
+    { int = Just Int_
+    , hex = Just Int_ 
+    , octal = Nothing 
+    , binary = Nothing
+    , float = Just Float_
+    }
 
 
 
@@ -90,3 +102,4 @@ yamlString =
 whitespace : Parser ()
 whitespace =
   chompWhile (\c -> c == ' ' || c == '\t' || c == '\n' || c == '\r')
+

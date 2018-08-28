@@ -5,6 +5,13 @@ import Yaml.Parser as Yaml
 import Html
 
 
+{- 
+
+TODO:
+  - Numbers starting with 0
+
+-}
+
 main : Html.Html msg 
 main =
   case Parser.run Yaml.parser testDocumentBegin of 
@@ -18,7 +25,9 @@ testDocumentBegin =
 
   --- trash
 
-  hfdjksfdh
+  4543.2
+
+
   """
 
 
@@ -54,8 +63,8 @@ yamlValueToString : Yaml.Value -> String
 yamlValueToString value =
   case value of
     Yaml.String_ string -> string 
-    Yaml.Float_ float -> String.fromFloat float 
-    Yaml.Int_ int -> String.fromInt int 
+    Yaml.Float_ float -> String.fromFloat float ++ " (float)"
+    Yaml.Int_ int -> String.fromInt int ++ " (int)"
     Yaml.List_ list -> "[ " ++ String.join ", " (List.map yamlValueToString list) ++ " ]"
     Yaml.Record_ properties -> "{ " ++ String.join ", " (List.map yamlPropertyToString properties) ++ " }"
 
