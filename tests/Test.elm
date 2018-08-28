@@ -30,6 +30,8 @@ testDocumentBegin =
   - ccc
   - 
     - fff
+    - ccc
+  - aaa
 - hhh
 """
 

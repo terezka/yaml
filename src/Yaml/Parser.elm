@@ -72,13 +72,15 @@ documentEnds =
 
 yamlValue : Int -> Parser Value
 yamlValue indent =
-  oneOf
-    [ yamlList
-    , yamlRecordInline
-    , yamlListInline
-    , yamlNumber
-    , yamlString
-    ]
+  succeed identity
+    -- |. map indention indent
+    |= oneOf
+        [ yamlList indent
+        , yamlRecordInline
+        , yamlListInline
+        , yamlNumber
+        , yamlString
+        ]
 
 
 yamlValueInline : List Char -> Parser Value
@@ -125,15 +127,8 @@ yamlNumber =
 -- YAML / LIST
 
 
-yamlList : Parser Value
-yamlList =
-  succeed identity
-    |= getCol
-    |> andThen yamlListWithIndent
-
-
-yamlListWithIndent : Int -> Parser Value
-yamlListWithIndent indent =
+yamlList : Int -> Parser Value
+yamlList indent =
   succeed List_
     |. symbol "- "
     |. actualSpaces
