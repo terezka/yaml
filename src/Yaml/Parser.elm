@@ -14,6 +14,7 @@ type Value
   | Int_ Int
   | List_ (List Value)
   | Record_ (List Property)
+  | Null_
 
 
 {-| -}
@@ -32,7 +33,7 @@ parser : Parser Value
 parser =
   succeed identity
     |. documentBegins
-    |= yamlValueTopLevel
+    |= yamlValue
     |. documentEnds
 
 
@@ -69,10 +70,11 @@ documentEnds =
 -- YAML / VALUE
 
 
-yamlValueTopLevel : Parser Value
-yamlValueTopLevel =
+yamlValue : Parser Value
+yamlValue =
   oneOf
-    [ yamlRecordInline
+    [ yamlList
+    , yamlRecordInline
     , yamlListInline
     , yamlNumber
     , yamlString
@@ -120,6 +122,42 @@ yamlNumber =
 
 
 
+-- YAML / LIST
+
+
+yamlList : Parser Value
+yamlList =
+  succeed identity
+    |= getCol
+    |> andThen yamlListWithIndent
+
+
+yamlListWithIndent : Int -> Parser Value
+yamlListWithIndent indent =
+  succeed List_
+    |. symbol "- "
+    |. actualSpaces
+    |= loop [] (yamlListEach indent)
+
+
+yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
+yamlListEach indent values =
+  succeed (\v next -> next (v :: values))
+    |= yamlValueInline ['\n']
+    |. newLines
+    |= oneOf
+        [ succeed (Done << List.reverse)
+            |. end
+        , succeed identity
+            |. indention indent
+            |= oneOf
+                [ succeed Loop |. symbol "- "
+                , succeed (Done << List.reverse) |. spaces
+                ]
+        ]
+
+
+
 -- YAML / LIST / INLINE
 
 
@@ -145,8 +183,9 @@ yamlListInlineEach values =
             |. symbol "," 
         , succeed (Done << List.reverse)
             |. symbol "]"
-        , succeed (Done << List.reverse) -- TODO When Parser.Advanced is available error
-            |. chompIf (\c -> c == '\n')
+        , succeed ()
+            |. symbol "\n"
+            |> andThen (\_ -> problem "An inline record must only be on one line.")
         ]
     |. actualSpaces
 
@@ -181,8 +220,9 @@ yamlRecordInlineEach properties =
             |. symbol ","
         , succeed (Done << List.reverse)
             |. symbol "}"
-        , succeed (Done << List.reverse) -- TODO When Parser.Advanced is available error
+        , succeed ()
             |. symbol "\n"
+            |> andThen (\_ -> problem "An inline record must only be on one line.")
         ]
     |. actualSpaces
 
@@ -194,6 +234,26 @@ yamlRecordInlineEach properties =
 actualSpaces : Parser ()
 actualSpaces =
   chompWhile (\c -> c == ' ')
+
+
+newLines : Parser ()
+newLines =
+  chompWhile (\c -> c == '\n')
+
+
+indention : Int -> Parser ()
+indention indent =
+  let
+    finish col =
+      if Debug.log "col" col == Debug.log "indent" indent then
+        succeed ()
+      else
+        problem "Expected more indention"
+  in
+  succeed identity
+    |. actualSpaces
+    |= getCol
+    |> andThen finish
 
 
 stringUntil : List Char -> Parser String

@@ -25,8 +25,9 @@ testDocumentBegin =
 
   --- trash
 
-  [{ hey: 1, her3: f, 333:vfgdf}, {}, 3]
-
+  - aaa
+  - bb
+  - {fd:df}
 
   """
 
@@ -67,6 +68,7 @@ yamlValueToString value =
     Yaml.Int_ int -> String.fromInt int ++ " (int)"
     Yaml.List_ list -> "[ " ++ String.join ", " (List.map yamlValueToString list) ++ " ]"
     Yaml.Record_ properties -> "{ " ++ String.join ", " (List.map yamlPropertyToString properties) ++ " }"
+    Yaml.Null_ -> "Null"
 
 
 yamlPropertyToString : Yaml.Property -> String
