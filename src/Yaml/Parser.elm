@@ -139,11 +139,10 @@ yamlListNext : Int -> List Value -> Parser (Step (List Value) (List Value))
 yamlListNext indent values =
   withIndent indent 
     { ok = 
-        succeed identity
-          |= oneOf
-              [ succeed (\i -> Loop (i :: values)) |= yamlListOne
-              , succeed (Done (List.reverse values))
-              ]
+        oneOf
+          [ succeed (\i -> Loop (i :: values)) |= yamlListOne
+          , succeed (Done (List.reverse values))
+          ]
     , err = succeed (Done (List.reverse values))
     }
 
@@ -151,7 +150,7 @@ yamlListNext indent values =
 yamlListOne : Parser Value
 yamlListOne =
   succeed identity
-    |. symbol "- "
+    |. symbol "- " -- TODO do not require space for sub array
     |. actualSpaces
     |= oneOf
         [ succeed identity 
