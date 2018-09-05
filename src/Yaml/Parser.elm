@@ -32,8 +32,7 @@ type alias Property =
 parser : Parser Value
 parser =
   succeed identity
-    |. documentBegins
-    |= andThen yamlValue getCol
+    |= andThen yamlValue documentBegins
     |. documentEnds
 
 
@@ -41,11 +40,15 @@ parser =
 -- DOCUMENT / BEGINS
 
 
-documentBegins : Parser ()
+documentBegins : Parser Int
 documentBegins =
   oneOf 
-    [ spaces |. threeDashesAndTrash |. spaces
-    , spaces
+    [ succeed identity
+        |. spaces 
+        |. threeDashesAndTrash 
+        |= nextIndent
+    , succeed identity
+        |= nextIndent
     ]
 
 
@@ -72,15 +75,13 @@ documentEnds =
 
 yamlValue : Int -> Parser Value
 yamlValue indent =
-  succeed identity
-    -- |. map indention indent
-    |= oneOf
-        [ yamlList indent
-        , yamlRecordInline
-        , yamlListInline
-        , yamlNumber
-        , yamlString
-        ]
+  oneOf
+    [ yamlList indent
+    , yamlRecordInline
+    , yamlListInline
+    , yamlNumber
+    , yamlString
+    ]
 
 
 yamlValueInline : List Char -> Parser Value
@@ -129,37 +130,36 @@ yamlNumber =
 
 yamlList : Int -> Parser Value
 yamlList indent =
-  succeed List_
-    |. symbol "- "
-    |. actualSpaces
-    |= loop [] (yamlListEach indent)
-
-
-yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
-yamlListEach indent values =
-  succeed (\v next -> next (v :: values))
+  succeed (\e r -> List_ (r ++ [ e ]))
     |= yamlListOne
-    |. newLines
-    |= oneOf
-        [ succeed identity
-            |. indention indent
-            |= oneOf
-                [ succeed Loop |. symbol "- "
-                , succeed (Done << List.reverse) |. spaces
-                ]
-        , succeed (Done << List.reverse)
-        ]
+    |= loop [] (yamlListNext indent)
+
+
+yamlListNext : Int -> List Value -> Parser (Step (List Value) (List Value))
+yamlListNext indent values =
+  withIndent indent 
+    { ok = 
+        succeed identity
+          |= oneOf
+              [ succeed (\i -> Loop (i :: values)) |= yamlListOne
+              , succeed (Done values) -- TODO correct order
+              ]
+    , err = succeed (Done (List.reverse values))
+    }
 
 
 yamlListOne : Parser Value
 yamlListOne =
-  oneOf
-    [ succeed identity 
-        |. symbol "\n"
-        |. actualSpaces
-        |= andThen yamlValue getCol
-    , yamlValueInline ['\n']
-    ]
+  succeed identity
+    |. symbol "- "
+    |. actualSpaces
+    |= oneOf
+        [ succeed identity 
+            |. symbol "\n"
+            |. actualSpaces
+            |= andThen yamlValue getCol
+        , yamlValueInline ['\n']
+        ]
 
 
 
@@ -236,6 +236,13 @@ yamlRecordInlineEach properties =
 -- COMMON
 
 
+stringUntil : List Char -> Parser String
+stringUntil endings =
+  succeed ()
+    |. chompWhile (\c -> not (List.member c endings))
+    |> getChompedString
+
+
 actualSpaces : Parser ()
 actualSpaces =
   chompWhile (\c -> c == ' ')
@@ -246,23 +253,33 @@ newLines =
   chompWhile (\c -> c == '\n')
 
 
-indention : Int -> Parser ()
-indention indent =
-  let
-    finish col =
-      if col == indent then
-        succeed ()
-      else
-        problem "Wrong indention"
-  in
-  succeed identity
+newLine : Parser ()
+newLine =
+  chompIf (\c -> c == '\n')
+
+
+nextIndent : Parser Int
+nextIndent =
+  loop 0 nextIndentHelp
+
+
+nextIndentHelp : Int -> Parser (Step Int Int)
+nextIndentHelp _ =
+  succeed (\i next -> next i)
     |. actualSpaces
     |= getCol
-    |> andThen finish
+    |= oneOf 
+        [ succeed Loop |. newLine
+        , succeed Done
+        ]
 
 
-stringUntil : List Char -> Parser String
-stringUntil endings =
-  succeed ()
-    |. chompWhile (\c -> not (List.member c endings))
-    |> getChompedString
+withIndent : Int -> { ok : Parser a, err : Parser a } -> Parser a
+withIndent indent next =
+  let check actual =
+        if actual == indent 
+          then next.ok
+          else next.err
+  in
+  andThen check nextIndent
+

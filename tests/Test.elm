@@ -10,6 +10,7 @@ import Html
 TODO:
   - Numbers starting with 0
   - Why does eee not parse? "ExpectingNumber"
+  - Check that sub list has larger indent than parent
 -}
 
 main : Html.Html msg 
@@ -27,11 +28,13 @@ testDocumentBegin =
 
 - aaa
 - 
-  - ccc
+  - bbb
   - 
-    - fff
     - ccc
-  - aaa
+    - ddd
+    - _eee
+    - fff
+  - ggg
 - hhh
 """
 
