@@ -130,7 +130,7 @@ yamlNumber =
 
 yamlList : Int -> Parser Value
 yamlList indent =
-  succeed (\e r -> List_ (r ++ [ e ]))
+  succeed (\e r -> List_ (e :: r))
     |= yamlListOne
     |= loop [] (yamlListNext indent)
 
@@ -142,7 +142,7 @@ yamlListNext indent values =
         succeed identity
           |= oneOf
               [ succeed (\i -> Loop (i :: values)) |= yamlListOne
-              , succeed (Done values) -- TODO correct order
+              , succeed (Done (List.reverse values))
               ]
     , err = succeed (Done (List.reverse values))
     }
