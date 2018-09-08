@@ -76,10 +76,10 @@ documentEnds =
 yamlValue : Int -> Parser Value
 yamlValue indent =
   oneOf
-    [ yamlList indent
-    , yamlRecord indent
-    , yamlRecordInline
+    [ yamlRecordInline
     , yamlListInline
+    , yamlList indent
+    , yamlRecord indent
     --, yamlNumber
     , yamlString
     ]
@@ -105,7 +105,6 @@ yamlString =
   yamlStringUntil ['\n']
 
 
--- TODO property names must not have line breaks
 yamlStringUntil : List Char -> Parser Value
 yamlStringUntil endings =
   succeed String_
@@ -314,21 +313,34 @@ yamlRecordInline =
 
 yamlRecordInlineEach : List Property -> Parser (Step (List Property) (List Property))
 yamlRecordInlineEach properties =
-  succeed (\n v next -> next (Property n v :: properties))
-    |= stringUntil [':']
-    |. symbol ":"
-    |. actualSpaces
-    |= yamlValueInline [',', '}', '\n']
-    |. actualSpaces
-    |= oneOf
-        [ succeed Loop
-            |. symbol ","
-        , succeed (Done << List.reverse)
-            |. symbol "}"
-        , succeed ()
-            |. symbol "\n"
-            |> andThen (\_ -> problem "An inline record must only be on one line.")
+  let
+    withProperty name =
+      case name of 
+        Ok validName ->
+          succeed (\v next -> next (Property validName v :: properties))
+            |= yamlRecordInlineValue
+            |= oneOf
+                [ succeed Loop |. symbol ","
+                , succeed (Done << List.reverse) |. symbol "}"
+                ]
+            |. actualSpaces
+
+        Err string -> 
+          problem "I was parsing an inline record, but I couldn't find the \":\"!"
+  in
+  propertyName |> andThen withProperty
+
+
+yamlRecordInlineValue : Parser Value
+yamlRecordInlineValue =
+  succeed identity
+    |. oneOf 
+        [ symbol " "
+        , symbol "\n"
+        , problem "I was parsing an inline record, but there must be a space after the \":\"!"
         ]
+    |. spaces
+    |= yamlValueInline [',', '}']
     |. actualSpaces
 
 

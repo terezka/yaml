@@ -20,6 +20,14 @@ main =
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
 
+randomTest : String
+randomTest =
+  """--- trash
+
+{'aaa' : aaa }
+
+  """
+
 testDocumentBegin : String
 testDocumentBegin =
   """
