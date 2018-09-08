@@ -269,19 +269,30 @@ yamlRecordNext indent values =
 
 yamlRecordOne : Parser Property
 yamlRecordOne =
-  succeed Property
-    |= stringUntil [':']
-    |. symbol ":"
-    |= oneOf
-        [ succeed identity
-            |. symbol " "
-            |. actualSpaces
-            |= oneOf
-                [ yamlRecordNested
-                , yamlValueInline ['\n']
-                ] 
-        , yamlRecordNested
-        ]
+  let
+    withProperty name =
+      case name of 
+        Ok validName ->
+          map (Property validName) yamlRecordOneValue
+
+        Err string -> 
+          problem "I was parsing a record, but I couldn't find the \":\"!"
+  in
+  propertyName |> andThen withProperty
+
+
+yamlRecordOneValue : Parser Value
+yamlRecordOneValue =
+  oneOf
+    [ succeed identity
+        |. symbol " "
+        |. actualSpaces
+        |= oneOf
+            [ yamlRecordNested
+            , yamlValueInline ['\n']
+            ] 
+    , yamlRecordNested
+    ]
 
 
 yamlRecordNested : Parser Value
