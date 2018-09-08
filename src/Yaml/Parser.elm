@@ -80,7 +80,7 @@ yamlValue indent =
     , yamlRecord indent
     , yamlRecordInline
     , yamlListInline
-    , yamlNumber
+    --, yamlNumber
     , yamlString
     ]
 
@@ -90,7 +90,7 @@ yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
-    , yamlNumber
+    --, yamlNumber
     , yamlStringUntil endings
     ]
 
@@ -158,7 +158,11 @@ yamlListOne =
             |. actualSpaces
             |= oneOf
                 [ yamlListNested
-                , yamlValueInline ['\n']
+                , yamlRecordInline
+                , yamlListInline
+                , andThen yamlRecord getCol
+                --, yamlNumber
+                , yamlStringUntil ['\n']
                 ] 
         , yamlListNested
         ]
@@ -167,6 +171,7 @@ yamlListOne =
 yamlListNested : Parser Value
 yamlListNested =
   succeed identity
+    |. actualSpaces
     |. symbol "\n"
     |. actualSpaces
     |= andThen yamlValue getCol
@@ -212,15 +217,23 @@ yamlListInlineEach values =
 yamlRecord : Int -> Parser Value
 yamlRecord indent =
   succeed (\s f -> f s)
-    |= stringUntil [':', '\n']
+    |= map (Debug.log "record") (stringUntil [':', '\n'])
     |= oneOf
         [ succeed identity
             |. symbol ":"
             |= oneOf 
                 [ succeed (\v r p -> Record_ (Property p v :: r))
                     |. symbol " " 
-                    |= yamlValueInline ['\n']
+                    |= oneOf
+                        [ yamlRecordNested
+                        , yamlValueInline ['\n']
+                        ]
                     |= loop [] (yamlRecordNext indent)
+
+                , succeed (\v r p -> Record_ (Property p v :: r))
+                    |= yamlRecordNested
+                    |= loop [] (yamlRecordNext indent)
+
                 , succeed (\s1 s2 -> String_ (s1 ++ s2))
                     |= stringUntil ['\n']
                 ]
@@ -261,6 +274,7 @@ yamlRecordOne =
 yamlRecordNested : Parser Value
 yamlRecordNested =
   succeed identity
+    |. actualSpaces
     |. symbol "\n"
     |. actualSpaces
     |= andThen yamlValue getCol
