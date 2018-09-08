@@ -85,14 +85,13 @@ yamlValue indent =
     ]
 
 
--- TODO line breaks are actually allowed in these
 yamlValueInline : List Char -> Parser Value
 yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
     --, yamlNumber
-    , yamlStringUntil endings
+    , yamlStringUntil endings -- TODO do not accept empty string
     ]
 
 
@@ -210,16 +209,11 @@ yamlListInline =
 yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
 yamlListInlineEach values =
   succeed (\v next -> next (v :: values))
-    |= yamlValueInline ['\n', ',', ']']
+    |= yamlValueInline [',', ']']
     |. actualSpaces
     |= oneOf
-        [ succeed Loop
-            |. symbol "," 
-        , succeed (Done << List.reverse)
-            |. symbol "]"
-        , succeed ()
-            |. symbol "\n"
-            |> andThen (\_ -> problem "An inline record must only be on one line.")
+        [ succeed Loop |. symbol "," 
+        , succeed (Done << List.reverse) |. symbol "]"
         ]
     |. actualSpaces
 
@@ -305,8 +299,7 @@ yamlRecordInline =
     |. symbol "{"
     |. actualSpaces
     |= oneOf
-        [ succeed []
-            |. symbol "}"
+        [ succeed [] |. symbol "}"
         , loop [] yamlRecordInlineEach
         ]
 
