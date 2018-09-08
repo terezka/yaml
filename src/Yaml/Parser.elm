@@ -107,7 +107,18 @@ yamlString =
 yamlStringUntil : List Char -> Parser Value
 yamlStringUntil endings =
   succeed String_ -- TODO trim?
-    |= stringUntil endings
+    |= oneOf
+        [ succeed (String.replace "\\" "\\\\")
+            |. symbol "'"
+            |= stringUntil ('\'' :: endings)
+            |. symbol "'"
+        , succeed identity
+            |. symbol "\""
+            |= stringUntil ('"' :: endings)
+            |. symbol "\""
+        , succeed identity
+            |= stringUntil endings
+        ]
 
 
 
