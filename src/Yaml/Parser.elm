@@ -217,7 +217,7 @@ yamlListInlineEach values =
 yamlRecord : Int -> Parser Value
 yamlRecord indent =
   succeed (\s f -> f s)
-    |= map (Debug.log "record") (stringUntil [':', '\n'])
+    |= stringUntil [':', '\n']
     |= oneOf
         [ succeed identity
             |. symbol ":"
