@@ -42,14 +42,15 @@ parser =
 
 documentBegins : Parser Int
 documentBegins =
-  oneOf 
-    [ succeed identity
-        |. spaces 
-        |. threeDashesAndTrash 
-        |= nextIndent
-    , succeed identity
-        |= nextIndent
-    ]
+  succeed identity
+    |. spaces
+    |= oneOf 
+        [ succeed identity
+            |. threeDashesAndTrash 
+            |= nextIndent
+        , succeed identity
+            |= nextIndent
+        ]
 
 
 threeDashesAndTrash : Parser ()

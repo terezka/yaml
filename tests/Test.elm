@@ -22,7 +22,7 @@ main =
 
 randomTest : String
 randomTest =
-  """--- trash
+  """
 
 [sss, s
 ss ]
