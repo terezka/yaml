@@ -109,9 +109,11 @@ yamlStringUntil endings =
     |= oneOf
         [ succeed identity
             |= singleQuotes
+            |. actualSpaces
             |. anyOf endings
         , succeed identity
             |= doubleQuotes
+            |. actualSpaces
             |. anyOf endings
         , succeed String.trim
             |= stringUntil endings
