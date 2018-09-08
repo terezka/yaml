@@ -109,11 +109,9 @@ yamlStringUntil endings =
     |= oneOf
         [ succeed identity
             |= singleQuotes
-            |. actualSpaces
             |. anyOf endings
         , succeed identity
             |= doubleQuotes
-            |. actualSpaces
             |. anyOf endings
         , succeed String.trim
             |= stringUntil endings
@@ -388,10 +386,8 @@ propertyName =
     |= oneOf
         [ succeed identity
             |= singleQuotes
-            |. actualSpaces
         , succeed identity
             |= doubleQuotes
-            |. actualSpaces
         , succeed String.trim
             |= stringUntil [':', '\n']
         ]
@@ -409,6 +405,7 @@ singleQuotes =
     |. symbol "'"
     |= stringUntil ['\'']
     |. symbol "'"
+    |. actualSpaces
 
 
 doubleQuotes : Parser String
@@ -417,6 +414,7 @@ doubleQuotes =
     |. symbol "\""
     |= stringUntil ['"']
     |. symbol "\""
+    |. actualSpaces
 
 
 apply : a -> (a -> b) -> b
