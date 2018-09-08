@@ -110,13 +110,15 @@ yamlStringUntil endings =
     |= oneOf
         [ succeed (String.replace "\\" "\\\\")
             |. symbol "'"
-            |= stringUntil ('\'' :: endings)
+            |= stringUntil ['\'']
             |. symbol "'"
+            |. anyOf endings
         , succeed identity
             |. symbol "\""
-            |= stringUntil ('"' :: endings)
+            |= stringUntil ['"']
             |. symbol "\""
-        , succeed identity
+            |. anyOf endings
+        , succeed String.trim
             |= stringUntil endings
         ]
 
@@ -329,6 +331,11 @@ yamlRecordInlineEach properties =
 
 
 -- COMMON
+
+
+anyOf : List Char -> Parser ()
+anyOf endings =
+  chompIf (\c -> List.member c endings)
 
 
 stringUntil : List Char -> Parser String
