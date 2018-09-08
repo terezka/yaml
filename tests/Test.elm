@@ -9,7 +9,7 @@ import Html
 
 TODO:
   - Numbers starting with 0
-  - Why does eee not parse? "ExpectingNumber"
+  - Why does eee not parse? "ExpectingNumber" (with the number parser added)
   - Check that sub list has larger indent than parent
 -}
 
@@ -29,7 +29,7 @@ testDocumentBegin =
 - id:
     bioguide: B000944
     thomas: '00136'
-    lis: S307
+    eee: eee
     govtrack: 400050
     opensecrets: N00003535
     votesmart: 27018

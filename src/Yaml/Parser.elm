@@ -85,6 +85,7 @@ yamlValue indent =
     ]
 
 
+-- TODO line breaks are actually allowed in these
 yamlValueInline : List Char -> Parser Value
 yamlValueInline endings =
   oneOf
@@ -104,6 +105,7 @@ yamlString =
   yamlStringUntil ['\n']
 
 
+-- TODO property names must not have line breaks
 yamlStringUntil : List Char -> Parser Value
 yamlStringUntil endings =
   succeed String_
