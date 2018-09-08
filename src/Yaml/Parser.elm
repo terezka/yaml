@@ -150,15 +150,25 @@ yamlListNext indent values =
 yamlListOne : Parser Value
 yamlListOne =
   succeed identity
-    |. symbol "- " -- TODO do not require space for sub array
-    |. actualSpaces
+    |. symbol "-"
     |= oneOf
-        [ succeed identity 
-            |. symbol "\n"
+        [ succeed identity
+            |. symbol " "
             |. actualSpaces
-            |= andThen yamlValue getCol
-        , yamlValueInline ['\n']
+            |= oneOf
+                [ yamlListNested
+                , yamlValueInline ['\n']
+                ] 
+        , yamlListNested
         ]
+
+
+yamlListNested : Parser Value
+yamlListNested =
+  succeed identity
+    |. symbol "\n"
+    |. actualSpaces
+    |= andThen yamlValue getCol
 
 
 
