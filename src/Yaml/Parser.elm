@@ -231,30 +231,28 @@ yamlListInlineEach values =
 
 yamlRecord : Int -> Parser Value
 yamlRecord indent =
-  succeed (\s f -> f s)
-    |= stringUntil [':', '\n']
+  let
+    withProperty name =
+      case name of 
+        Ok validName -> yamlRecordConfirmed indent validName
+        Err string -> succeed (String_ string)
+  in
+  propertyName |> andThen withProperty 
+
+
+yamlRecordConfirmed : Int -> String -> Parser Value
+yamlRecordConfirmed indent name =
+  succeed (\v r -> Record_ (Property name v :: r))
     |= oneOf
         [ succeed identity
-            |. symbol ":"
-            |= oneOf 
-                [ succeed (\v r p -> Record_ (Property p v :: r))
-                    |. symbol " " 
-                    |= oneOf
-                        [ yamlRecordNested
-                        , yamlValueInline ['\n']
-                        ]
-                    |= loop [] (yamlRecordNext indent)
-
-                , succeed (\v r p -> Record_ (Property p v :: r))
-                    |= yamlRecordNested
-                    |= loop [] (yamlRecordNext indent)
-
-                , succeed (\s1 s2 -> String_ (s1 ++ s2))
-                    |= stringUntil ['\n']
+            |. symbol " "
+            |= oneOf
+                [ yamlRecordNested
+                , yamlValueInline ['\n']
                 ]
-        , succeed String_
-            |. symbol "\n"
+        , yamlRecordNested
         ]
+    |= loop [] (yamlRecordNext indent)
 
 
 yamlRecordNext : Int -> List Property -> Parser (Step (List Property) (List Property))
@@ -387,3 +385,51 @@ withIndent indent next =
   in
   andThen check nextIndent
 
+
+
+-- PROPERTY NAME
+
+
+propertyName : Parser (Result String String)
+propertyName =
+  let valid = Ok
+      invalid s1 s2 = Err (s1 ++ s2)
+  in
+  succeed apply
+    |= oneOf
+        [ succeed identity
+            |= singleQuotes
+            |. actualSpaces
+        , succeed identity
+            |= doubleQuotes
+            |. actualSpaces
+        , succeed String.trim
+            |= stringUntil [':', '\n']
+        ]
+    |= oneOf
+        [ succeed valid 
+            |. anyOf [':']
+        , succeed invalid
+            |= stringUntil ['\n']
+        ]
+
+
+singleQuotes : Parser String
+singleQuotes =
+  succeed (String.replace "\\" "\\\\")
+    |. symbol "'"
+    |= stringUntil ['\'']
+    |. symbol "'"
+
+
+doubleQuotes : Parser String
+doubleQuotes =
+  succeed identity
+    |. symbol "\""
+    |= stringUntil ['"']
+    |. symbol "\""
+
+
+apply : a -> (a -> b) -> b
+apply v f =
+  f v

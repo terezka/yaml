@@ -27,7 +27,7 @@ testDocumentBegin =
 --- trash
 
 - id:
-    bioguide: B000944
+    "bioguide": B000944
     thomas: '00136'
     eee: eee
     govtrack: 400050
