@@ -24,8 +24,9 @@ randomTest : String
 randomTest =
   """
 
-[sss, s
-ss ]
+aaa: Address1 A 
+ Address1 B
+bbb: Address2 A Address2 B
 
   """
 

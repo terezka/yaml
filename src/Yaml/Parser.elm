@@ -81,7 +81,6 @@ yamlValue indent =
     , yamlListInline
     , yamlList indent
     , yamlRecord indent
-    --, yamlNumber
     , yamlString
     ]
 
@@ -91,7 +90,6 @@ yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
-    --, yamlNumber
     , yamlStringUntil endings -- TODO do not accept empty string
     ]
 
@@ -109,34 +107,15 @@ yamlStringUntil : List Char -> Parser Value
 yamlStringUntil endings =
   succeed String_
     |= oneOf
-        [ succeed (String.replace "\\" "\\\\")
-            |. symbol "'"
-            |= stringUntil ['\'']
-            |. symbol "'"
+        [ succeed identity
+            |= singleQuotes
             |. anyOf endings
         , succeed identity
-            |. symbol "\""
-            |= stringUntil ['"']
-            |. symbol "\""
+            |= doubleQuotes
             |. anyOf endings
         , succeed String.trim
             |= stringUntil endings
         ]
-
-
-
--- YAML / NUMBER
-
-
-yamlNumber : Parser Value
-yamlNumber =
-  number
-    { int = Just Int_
-    , hex = Just Int_ 
-    , octal = Nothing 
-    , binary = Nothing
-    , float = Just Float_
-    }
 
 
 
@@ -175,8 +154,7 @@ yamlListOne =
                 , yamlRecordInline
                 , yamlListInline
                 , andThen yamlRecord getCol
-                --, yamlNumber
-                , yamlStringUntil ['\n']
+                , yamlString
                 ] 
         , yamlListNested
         ]
