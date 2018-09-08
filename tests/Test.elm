@@ -28,6 +28,11 @@ testDocumentBegin =
 
 aaa: aaa
 bbb: bbb
+ccc:
+    ddd: ddd
+    fff: fff
+ggg: ggg
+
 """
 
 

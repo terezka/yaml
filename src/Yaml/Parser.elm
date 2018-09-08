@@ -224,7 +224,7 @@ yamlRecord indent =
                 , succeed (\s1 s2 -> String_ (s1 ++ s2))
                     |= stringUntil ['\n']
                 ]
-        , succeed (\s1 -> String_ s1)
+        , succeed String_
             |. symbol "\n"
         ]
 
@@ -245,8 +245,25 @@ yamlRecordOne : Parser Property
 yamlRecordOne =
   succeed Property
     |= stringUntil [':']
-    |. symbol ": "
-    |= yamlValueInline ['\n']
+    |. symbol ":"
+    |= oneOf
+        [ succeed identity
+            |. symbol " "
+            |. actualSpaces
+            |= oneOf
+                [ yamlRecordNested
+                , yamlValueInline ['\n']
+                ] 
+        , yamlRecordNested
+        ]
+
+
+yamlRecordNested : Parser Value
+yamlRecordNested =
+  succeed identity
+    |. symbol "\n"
+    |. actualSpaces
+    |= andThen yamlValue getCol
 
 
 
