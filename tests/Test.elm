@@ -26,16 +26,8 @@ testDocumentBegin =
 
 --- trash
 
-- aaa
--     
-  - bbb
-  -
-    - ccc
-    - ddd
-    - _eee
-    - fff
-  - ggg
-- hhh
+aaa: aaa
+bbb: bbb
 """
 
 

@@ -77,6 +77,7 @@ yamlValue : Int -> Parser Value
 yamlValue indent =
   oneOf
     [ yamlList indent
+    , yamlRecord indent
     , yamlRecordInline
     , yamlListInline
     , yamlNumber
@@ -203,6 +204,49 @@ yamlListInlineEach values =
         ]
     |. actualSpaces
 
+
+
+-- YAML / RECORD
+
+
+yamlRecord : Int -> Parser Value
+yamlRecord indent =
+  succeed (\s f -> f s)
+    |= stringUntil [':', '\n']
+    |= oneOf
+        [ succeed identity
+            |. symbol ":"
+            |= oneOf 
+                [ succeed (\v r p -> Record_ (Property p v :: r))
+                    |. symbol " " 
+                    |= yamlValueInline ['\n']
+                    |= loop [] (yamlRecordNext indent)
+                , succeed (\s1 s2 -> String_ (s1 ++ s2))
+                    |= stringUntil ['\n']
+                ]
+        , succeed (\s1 -> String_ s1)
+            |. symbol "\n"
+        ]
+
+
+yamlRecordNext : Int -> List Property -> Parser (Step (List Property) (List Property))
+yamlRecordNext indent values =
+  withIndent indent 
+    { ok = 
+        oneOf
+          [ succeed (\i -> Loop (i :: values)) |= yamlRecordOne
+          , succeed (Done (List.reverse values))
+          ]
+    , err = succeed (Done (List.reverse values))
+    }
+
+
+yamlRecordOne : Parser Property
+yamlRecordOne =
+  succeed Property
+    |= stringUntil [':']
+    |. symbol ": "
+    |= yamlValueInline ['\n']
 
 
 
