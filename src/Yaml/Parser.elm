@@ -243,15 +243,7 @@ yamlRecord indent =
 yamlRecordConfirmed : Int -> String -> Parser Value
 yamlRecordConfirmed indent name =
   succeed (\v r -> Record_ (Property name v :: r))
-    |= oneOf
-        [ succeed identity
-            |. symbol " "
-            |= oneOf
-                [ yamlRecordNested
-                , yamlValueInline ['\n']
-                ]
-        , yamlRecordNested
-        ]
+    |= yamlRecordOneValue
     |= loop [] (yamlRecordNext indent)
 
 
