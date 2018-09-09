@@ -125,48 +125,87 @@ yamlStringUntil endings =
 yamlList : Int -> Parser Value
 yamlList indent =
   succeed (\e r -> List_ (e :: r))
-    |= yamlListOne
-    |= loop [] (yamlListNext indent)
+    |= yamlListNewEntry
+    |= loop [] (yamlListEach indent)
 
 
-yamlListNext : Int -> List Value -> Parser (Step (List Value) (List Value))
-yamlListNext indent values =
-  withIndent indent 
-    { ok = 
-        oneOf
-          [ succeed (\i -> Loop (i :: values)) |= yamlListOne
-          , succeed (Done (List.reverse values))
-          ]
-    , err = succeed (Done (List.reverse values))
+yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
+yamlListEach indent values =
+  let finish = Done (List.reverse values)
+      next value = Loop (value :: values)
+      continued = Loop
+  in
+  checkIndent indent
+    { smaller = succeed finish
+    , exactly = oneOf [ map next yamlListNewEntry, succeed finish ]
+    , larger  = map continued << yamlListContinuedEntry values
+    , ending = succeed finish
     }
 
 
-yamlListOne : Parser Value
-yamlListOne =
+yamlListNewEntry : Parser Value
+yamlListNewEntry =
   succeed identity
-    |. symbol "-"
-    |= oneOf
-        [ succeed identity
-            |. symbol " "
-            |. actualSpaces
+    |. singleDash
+    |= oneOf 
+        [ succeed Null_
+            |. newLine
+        , succeed identity
+            |. singleSpace
+            |. manySpaces
             |= oneOf
-                [ yamlListNested
+                [ yamlListInline
                 , yamlRecordInline
-                , yamlListInline
-                , andThen yamlRecord getCol
-                , yamlString
-                ] 
-        , yamlListNested
+                , succeed Null_ 
+                    |. newLine
+                , succeed String_ 
+                    |= singleQuotes
+                    |. newLine
+                , succeed String_ 
+                    |= doubleQuotes
+                    |. newLine
+                , succeed String_ 
+                    |= lineOfCharacters
+                    |. newLine
+                ]
         ]
 
 
-yamlListNested : Parser Value
-yamlListNested =
-  succeed identity
-    |. actualSpaces
-    |. symbol "\n"
-    |. actualSpaces
-    |= andThen yamlValue getCol
+yamlListContinuedEntry : List Value -> Int -> Parser (List Value)
+yamlListContinuedEntry values subIndent =
+  let
+    coalesce value =
+      case ( values, value ) of
+        ( Null_ :: rest, _ ) -> 
+          succeed (value :: rest)
+
+        ( String_ prev :: rest, String_ new ) -> 
+          succeed (String_ (prev ++ " " ++ new) :: rest)
+
+        ( _ :: rest, String_ _ ) -> -- TODO don't skip new lines
+          problem "Expected \"-\""
+
+        ( _, _ ) -> 
+          succeed (value :: values)
+  in
+  andThen coalesce <|
+    oneOf
+      [ yamlListInline
+      , yamlRecordInline
+      , yamlRecord subIndent
+      , yamlList subIndent
+      , succeed Null_ 
+          |. newLine
+      , succeed String_ 
+          |= singleQuotes
+          |. newLine
+      , succeed String_ 
+          |= doubleQuotes
+          |. newLine
+      , succeed String_ 
+          |= lineOfCharacters
+          |. newLine
+      ]
 
 
 
@@ -320,6 +359,21 @@ yamlRecordInlineValue =
 -- COMMON
 
 
+singleDash : Parser ()
+singleDash =
+  symbol "-"
+
+
+singleSpace : Parser ()
+singleSpace =
+  symbol " "
+
+
+manySpaces : Parser ()
+manySpaces =
+  chompWhile (\c -> c == ' ')
+
+
 anyOf : List Char -> Parser ()
 anyOf endings =
   chompIf (\c -> List.member c endings)
@@ -373,6 +427,20 @@ withIndent indent next =
   andThen check nextIndent
 
 
+checkIndent : Int -> { smaller : Parser a, exactly : Parser a, larger : Int -> Parser a, ending : Parser a } -> Parser a
+checkIndent indent next =
+  let check actual =
+        oneOf
+          [ andThen (always next.ending) end 
+          , if actual == indent then next.exactly
+            else if actual > indent then next.larger actual
+            else next.smaller
+          ]
+        
+  in
+  andThen check nextIndent
+
+
 
 -- PROPERTY NAME
 
@@ -415,6 +483,14 @@ doubleQuotes =
     |= stringUntil ['"']
     |. symbol "\""
     |. actualSpaces
+
+
+lineOfCharacters : Parser String
+lineOfCharacters =
+  succeed ()
+    |. chompIf (\c -> c /= '\n')
+    |. chompUntilEndOr "\n"
+    |> getChompedString
 
 
 apply : a -> (a -> b) -> b
