@@ -183,8 +183,8 @@ yamlListValue indent =
     oneOf
       [ yamlListInline
       , yamlRecordInline
-      , yamlRecord indent
       , yamlList indent
+      , yamlRecord indent
       , succeed Null_ 
           |. newLine
       , succeed String_ 
@@ -237,65 +237,100 @@ yamlRecord indent =
     withProperty name =
       case name of 
         Ok validName -> yamlRecordConfirmed indent validName
-        Err string -> succeed (String_ string)
+        Err value -> succeed value
   in
-  propertyName |> andThen withProperty 
+  propertyName |> andThen withProperty
 
 
 yamlRecordConfirmed : Int -> String -> Parser Value
 yamlRecordConfirmed indent name =
-  succeed (\v r -> Record_ (Property name v :: r))
-    |= yamlRecordOneValue
-    |= loop [] (yamlRecordNext indent)
+  let
+    withValue value =
+      succeed Record_
+        |= loop [ Property name value ] (yamlRecordEach indent)
+  in
+  yamlRecordValue indent
+    |> andThen withValue
 
 
-yamlRecordNext : Int -> List Property -> Parser (Step (List Property) (List Property))
-yamlRecordNext indent values =
-  withIndent indent 
-    { ok = 
-        oneOf
-          [ succeed (\i -> Loop (i :: values)) |= yamlRecordOne
-          , succeed (Done (List.reverse values))
-          ]
-    , err = succeed (Done (List.reverse values))
+yamlRecordEach : Int -> List Property -> Parser (Step (List Property) (List Property))
+yamlRecordEach indent values =
+  let finish = Done (List.reverse values)
+      next value = Loop (value :: values)
+      continued = Loop
+  in
+  checkIndent indent
+    { smaller = succeed finish
+    , exactly = oneOf [ map next (yamlRecordNewEntry indent), succeed finish ]
+    , larger  = map continued << yamlRecordContinuedEntry values
+    , ending = succeed finish
     }
 
 
-yamlRecordOne : Parser Property
-yamlRecordOne =
+yamlRecordNewEntry : Int -> Parser Property
+yamlRecordNewEntry indent =
   let
     withProperty name =
       case name of 
         Ok validName ->
-          map (Property validName) yamlRecordOneValue
+          map (Property validName) <|
+            oneOf 
+              [ succeed Null_
+                  |. newLine
+              , succeed identity
+                  |. singleSpace
+                  |. manySpaces
+                  |= yamlRecordValue indent
+              ]
 
-        Err string -> 
+        Err _ -> 
           problem "I was parsing a record, but I couldn't find the \":\"!"
   in
   propertyName |> andThen withProperty
 
 
-yamlRecordOneValue : Parser Value
-yamlRecordOneValue =
-  oneOf
-    [ succeed identity
-        |. symbol " "
-        |. actualSpaces
-        |= oneOf
-            [ yamlRecordNested
-            , yamlValueInline ['\n']
-            ] 
-    , yamlRecordNested
-    ]
+yamlRecordContinuedEntry : List Property -> Int -> Parser (List Property)
+yamlRecordContinuedEntry properties subIndent =
+  let
+    coalesce value =
+      case properties of
+        latest :: rest ->
+          case ( latest.value, value ) of
+            ( Null_, _ ) -> 
+              succeed ({ latest | value = value } :: rest)
+
+            ( String_ prev, String_ new ) -> -- TODO don't skip new lines
+              succeed ({ latest | value = String_ (prev ++ " " ++ new) } :: rest)
+
+            ( _, _ ) ->
+              problem "Expected new property"
+
+        rest ->
+          problem "Expected new property"
+  in
+  andThen coalesce (yamlRecordValue subIndent)
 
 
-yamlRecordNested : Parser Value
-yamlRecordNested =
-  succeed identity
-    |. actualSpaces
-    |. symbol "\n"
-    |. actualSpaces
-    |= andThen yamlValue getCol
+yamlRecordValue : Int -> Parser Value
+yamlRecordValue indent =
+  lazy <| \_ -> 
+    oneOf
+      [ yamlListInline
+      , yamlRecordInline
+      , yamlList indent
+      , yamlRecord indent
+      , succeed Null_ 
+          |. newLine
+      , succeed String_ 
+          |= singleQuotes
+          |. newLine
+      , succeed String_ 
+          |= doubleQuotes
+          |. newLine
+      , succeed String_ 
+          |= lineOfCharacters
+          |. newLine
+      ]
 
 
 
@@ -327,7 +362,7 @@ yamlRecordInlineEach properties =
                 ]
             |. actualSpaces
 
-        Err string -> 
+        Err _ -> 
           problem "I was parsing an inline record, but I couldn't find the \":\"!"
   in
   propertyName |> andThen withProperty
@@ -436,10 +471,13 @@ checkIndent indent next =
 -- PROPERTY NAME
 
 
-propertyName : Parser (Result String String)
+propertyName : Parser (Result Value String)
 propertyName =
   let valid = Ok
-      invalid s1 s2 = Err (s1 ++ s2)
+      invalid s1 s2 = 
+        case s1 ++ s2 of
+          "" -> Err Null_
+          result -> Err (String_ result)
   in
   succeed apply
     |= oneOf
