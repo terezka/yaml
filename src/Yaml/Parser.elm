@@ -124,9 +124,13 @@ yamlStringUntil endings =
 
 yamlList : Int -> Parser Value
 yamlList indent =
-  succeed (\e r -> List_ (e :: r))
-    |= yamlListNewEntry indent
-    |= loop [] (yamlListEach indent)
+  let
+    withValue value =
+      succeed List_
+        |= loop [ value ] (yamlListEach indent)
+  in
+  yamlListNewEntry
+    |> andThen withValue
 
 
 yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
@@ -137,14 +141,14 @@ yamlListEach indent values =
   in
   checkIndent indent
     { smaller = succeed finish
-    , exactly = oneOf [ map next (yamlListNewEntry indent), succeed finish ]
+    , exactly = oneOf [ map next yamlListNewEntry, succeed finish ]
     , larger  = map continued << yamlListContinuedEntry values
     , ending = succeed finish
     }
 
 
-yamlListNewEntry : Int -> Parser Value
-yamlListNewEntry indent =
+yamlListNewEntry : Parser Value
+yamlListNewEntry =
   succeed identity
     |. singleDash
     |= oneOf 
@@ -153,7 +157,7 @@ yamlListNewEntry indent =
         , succeed identity
             |. singleSpace
             |. manySpaces
-            |= yamlListValue indent
+            |= yamlListValue
         ]
 
 
@@ -174,17 +178,17 @@ yamlListContinuedEntry values subIndent =
         ( _, _ ) -> 
           succeed (value :: values)
   in
-  andThen coalesce (yamlListValue subIndent)
+  andThen coalesce yamlListValue
 
 
-yamlListValue : Int -> Parser Value
-yamlListValue indent =
+yamlListValue : Parser Value
+yamlListValue =
   lazy <| \_ -> 
     oneOf
       [ yamlListInline
       , yamlRecordInline
-      , yamlList indent
-      , yamlRecord indent
+      , andThen yamlList getCol
+      , andThen yamlRecord getCol
       , succeed Null_ 
           |. newLine
       , succeed String_ 
@@ -249,26 +253,51 @@ yamlRecordConfirmed indent name =
       succeed Record_
         |= loop [ Property name value ] (yamlRecordEach indent)
   in
-  yamlRecordValue indent
+  yamlRecordValue
     |> andThen withValue
 
 
 yamlRecordEach : Int -> List Property -> Parser (Step (List Property) (List Property))
-yamlRecordEach indent values =
-  let finish = Done (List.reverse values)
-      next value = Loop (value :: values)
+yamlRecordEach indent properties =
+  let finish = Done (List.reverse properties)
+      next property = Loop (property :: properties)
       continued = Loop
+
+      yamlRecordNext =
+        oneOf 
+          [ map next yamlRecordNewEntry
+          , succeed finish 
+          ]
+
+      yamlRecordNextOrList latest rest =
+        oneOf 
+          [ map (\list -> continued ({ latest | value = list } :: rest)) (yamlList indent)
+          , map next yamlRecordNewEntry
+          , succeed finish 
+          ]
   in
   checkIndent indent
     { smaller = succeed finish
-    , exactly = oneOf [ map next (yamlRecordNewEntry indent), succeed finish ]
-    , larger  = map continued << yamlRecordContinuedEntry values
+    , exactly = 
+        case properties of 
+          latest :: rest ->
+            case latest.value of
+              Null_ ->
+                -- Lists are allowed on the same level as the record
+                yamlRecordNextOrList latest rest
+                
+              _ ->
+                yamlRecordNext
+
+          _ ->
+            yamlRecordNext
+    , larger = map continued << yamlRecordContinuedEntry properties
     , ending = succeed finish
     }
 
 
-yamlRecordNewEntry : Int -> Parser Property
-yamlRecordNewEntry indent =
+yamlRecordNewEntry : Parser Property
+yamlRecordNewEntry =
   let
     withProperty name =
       case name of 
@@ -280,7 +309,7 @@ yamlRecordNewEntry indent =
               , succeed identity
                   |. singleSpace
                   |. manySpaces
-                  |= yamlRecordValue indent
+                  |= yamlRecordValue
               ]
 
         Err _ -> 
@@ -308,17 +337,17 @@ yamlRecordContinuedEntry properties subIndent =
         rest ->
           problem "Expected new property"
   in
-  andThen coalesce (yamlRecordValue subIndent)
+  andThen coalesce yamlRecordValue
 
 
-yamlRecordValue : Int -> Parser Value
-yamlRecordValue indent =
+yamlRecordValue : Parser Value
+yamlRecordValue =
   lazy <| \_ -> 
     oneOf
       [ yamlListInline
       , yamlRecordInline
-      , yamlList indent
-      , yamlRecord indent
+      , andThen yamlList getCol
+      , andThen yamlRecord getCol
       , succeed Null_ 
           |. newLine
       , succeed String_ 
@@ -441,16 +470,6 @@ nextIndentHelp _ =
         [ succeed Loop |. newLine
         , succeed Done
         ]
-
-
-withIndent : Int -> { ok : Parser a, err : Parser a } -> Parser a
-withIndent indent next =
-  let check actual =
-        if actual == indent 
-          then next.ok
-          else next.err
-  in
-  andThen check nextIndent
 
 
 checkIndent : Int -> { smaller : Parser a, exactly : Parser a, larger : Int -> Parser a, ending : Parser a } -> Parser a

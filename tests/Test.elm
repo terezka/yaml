@@ -11,11 +11,12 @@ TODO:
   - Numbers starting with 0
   - Why does eee not parse? "ExpectingNumber" (with the number parser added)
   - Check that sub list has larger indent than parent
+  - No empty strings
 -}
 
 main : Html.Html msg 
 main =
-  case Parser.run Yaml.parser randomTest of 
+  case Parser.run Yaml.parser testDocumentBegin of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -24,9 +25,10 @@ randomTest : String
 randomTest =
   """
 
-aaa: Address1 A 
- Address1 B
-bbb: Address2 A Address2 B
+- aaa:
+    bbb: bbb
+  ccc:
+    ddd: ddd
 
   """
 
@@ -47,7 +49,7 @@ testDocumentBegin =
     - H2OH13033
     - S6OH00163
     cspan: 5051
-    wikipedia: Sherrod Brown
+    wikipedia:  Sherrod Brown1
     house_history: 9996
     ballotpedia: Sherrod Brown
     maplight: 168
