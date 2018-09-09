@@ -125,7 +125,7 @@ yamlStringUntil endings =
 yamlList : Int -> Parser Value
 yamlList indent =
   succeed (\e r -> List_ (e :: r))
-    |= yamlListNewEntry
+    |= yamlListNewEntry indent
     |= loop [] (yamlListEach indent)
 
 
@@ -137,14 +137,14 @@ yamlListEach indent values =
   in
   checkIndent indent
     { smaller = succeed finish
-    , exactly = oneOf [ map next yamlListNewEntry, succeed finish ]
+    , exactly = oneOf [ map next (yamlListNewEntry indent), succeed finish ]
     , larger  = map continued << yamlListContinuedEntry values
     , ending = succeed finish
     }
 
 
-yamlListNewEntry : Parser Value
-yamlListNewEntry =
+yamlListNewEntry : Int -> Parser Value
+yamlListNewEntry indent =
   succeed identity
     |. singleDash
     |= oneOf 
@@ -153,21 +153,7 @@ yamlListNewEntry =
         , succeed identity
             |. singleSpace
             |. manySpaces
-            |= oneOf
-                [ yamlListInline
-                , yamlRecordInline
-                , succeed Null_ 
-                    |. newLine
-                , succeed String_ 
-                    |= singleQuotes
-                    |. newLine
-                , succeed String_ 
-                    |= doubleQuotes
-                    |. newLine
-                , succeed String_ 
-                    |= lineOfCharacters
-                    |. newLine
-                ]
+            |= yamlListValue indent
         ]
 
 
@@ -188,12 +174,17 @@ yamlListContinuedEntry values subIndent =
         ( _, _ ) -> 
           succeed (value :: values)
   in
-  andThen coalesce <|
+  andThen coalesce (yamlListValue subIndent)
+
+
+yamlListValue : Int -> Parser Value
+yamlListValue indent =
+  lazy <| \_ -> 
     oneOf
       [ yamlListInline
       , yamlRecordInline
-      , yamlRecord subIndent
-      , yamlList subIndent
+      , yamlRecord indent
+      , yamlList indent
       , succeed Null_ 
           |. newLine
       , succeed String_ 
