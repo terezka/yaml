@@ -81,6 +81,7 @@ yamlValue indent =
     , yamlListInline
     , yamlList indent
     , yamlRecord indent
+    , yamlNull
     , yamlString
     ]
 
@@ -95,12 +96,45 @@ yamlValueInline endings =
 
 
 
+-- YAML / NULL
+
+
+yamlNull : Parser Value
+yamlNull =
+  succeed Null_
+    |. newLine
+
+
+
 -- YAML / STRING
 
 
 yamlString : Parser Value
 yamlString =
-  yamlStringUntil ['\n']
+  let
+    multiline result =
+      oneOf
+        [ map (\i -> Loop (i :: result)) lineOfCharacters
+        , succeed (Done (List.reverse result |> String.concat))
+        ]
+  in
+  succeed String_ 
+    |= oneOf
+        [ singleQuotes
+        , doubleQuotes
+        , loop [] multiline
+        ]        
+
+
+yamlStringInline : Parser Value
+yamlStringInline =
+  succeed String_ 
+    |= oneOf 
+        [ singleQuotes 
+        , doubleQuotes
+        , lineOfCharacters
+        ]
+    |. newLine
 
 
 yamlStringUntil : List Char -> Parser Value
@@ -492,11 +526,16 @@ checkIndent indent next =
 
 propertyName : Parser (Result Value String)
 propertyName =
-  let valid = Ok
-      invalid s1 s2 = 
+  let remaining =
+        succeed ()
+          |. chompWhile (always True)
+          |> getChompedString
+
+      valid = Ok
+      invalid s2 s1 = 
         case s1 ++ s2 of
           "" -> Err Null_
-          result -> Err (String_ result)
+          result -> Err (String_ (String.trim result))
   in
   succeed apply
     |= oneOf
@@ -511,7 +550,7 @@ propertyName =
         [ succeed valid 
             |. anyOf [':']
         , succeed invalid
-            |= stringUntil ['\n']
+            |= remaining
         ]
 
 
