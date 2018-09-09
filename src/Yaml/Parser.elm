@@ -204,34 +204,6 @@ yamlListValue =
 
 
 
--- YAML / LIST / INLINE
-
-
-yamlListInline : Parser Value
-yamlListInline =
-  succeed List_
-    |. symbol "["
-    |. actualSpaces
-    |= oneOf
-        [ succeed []
-            |. symbol "}"
-        , loop [] yamlListInlineEach
-        ]
-
-
-yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
-yamlListInlineEach values =
-  succeed (\v next -> next (v :: values))
-    |= yamlValueInline [',', ']']
-    |. actualSpaces
-    |= oneOf
-        [ succeed Loop |. symbol "," 
-        , succeed (Done << List.reverse) |. symbol "]"
-        ]
-    |. actualSpaces
-
-
-
 -- YAML / RECORD
 
 
@@ -360,6 +332,34 @@ yamlRecordValue =
           |= lineOfCharacters
           |. newLine
       ]
+
+
+
+-- YAML / LIST / INLINE
+
+
+yamlListInline : Parser Value
+yamlListInline =
+  succeed List_
+    |. symbol "["
+    |. actualSpaces
+    |= oneOf
+        [ succeed []
+            |. symbol "}"
+        , loop [] yamlListInlineEach
+        ]
+
+
+yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
+yamlListInlineEach values =
+  succeed (\v next -> next (v :: values))
+    |= yamlValueInline [',', ']']
+    |. actualSpaces
+    |= oneOf
+        [ succeed Loop |. symbol "," 
+        , succeed (Done << List.reverse) |. symbol "]"
+        ]
+    |. actualSpaces
 
 
 
