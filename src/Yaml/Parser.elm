@@ -210,6 +210,19 @@ yamlListContinuedEntry values subIndent =
   andThen coalesce yamlListValue
 
 
+yamlListValueInline : Parser Value
+yamlListValueInline =
+  lazy <| \_ -> 
+    oneOf
+      [ yamlListInline
+      , yamlRecordInline
+      , yamlNull
+      , succeed identity 
+          |= yamlStringInline ['\n']
+          |. newLine -- TODO necessary?
+      ]
+
+
 yamlListValue : Parser Value
 yamlListValue =
   lazy <| \_ -> 
@@ -218,17 +231,10 @@ yamlListValue =
       , yamlRecordInline
       , andThen yamlList getCol
       , andThen yamlRecord getCol
-      , succeed Null_ 
-          |. newLine
-      , succeed String_ 
-          |= singleQuotes
-          |. newLine
-      , succeed String_ 
-          |= doubleQuotes
-          |. newLine
-      , succeed String_ 
-          |= lineOfCharacters
-          |. newLine
+      , yamlNull
+      , succeed identity 
+          |= yamlStringInline ['\n']
+          |. newLine -- TODO necessary?
       ]
 
 
@@ -254,7 +260,7 @@ yamlRecordConfirmed indent name =
       succeed Record_
         |= loop [ Property name value ] (yamlRecordEach indent)
   in
-  yamlRecordValue
+  yamlRecordValueInline
     |> andThen withValue
 
 
@@ -305,12 +311,11 @@ yamlRecordNewEntry =
         Ok validName ->
           map (Property validName) <|
             oneOf 
-              [ succeed Null_
-                  |. newLine
+              [ yamlNull
               , succeed identity
                   |. singleSpace
                   |. manySpaces
-                  |= yamlRecordValue
+                  |= yamlRecordValueInline
               ]
 
         Err _ -> 
@@ -341,6 +346,18 @@ yamlRecordContinuedEntry properties subIndent =
   andThen coalesce yamlRecordValue
 
 
+yamlRecordValueInline : Parser Value
+yamlRecordValueInline =
+  oneOf
+    [ yamlListInline
+    , yamlRecordInline
+    , yamlNull
+    , succeed identity 
+        |= yamlStringInline ['\n']
+        |. newLine -- TODO necessary?
+    ]
+
+
 yamlRecordValue : Parser Value
 yamlRecordValue =
   lazy <| \_ -> 
@@ -349,16 +366,9 @@ yamlRecordValue =
       , yamlRecordInline
       , andThen yamlList getCol
       , andThen yamlRecord getCol
-      , succeed Null_ 
-          |. newLine
-      , succeed String_ 
-          |= singleQuotes
-          |. newLine
-      , succeed String_ 
-          |= doubleQuotes
-          |. newLine
-      , succeed String_ 
-          |= lineOfCharacters
+      , yamlNull
+      , succeed identity 
+          |= yamlStringInline ['\n']
           |. newLine
       ]
 

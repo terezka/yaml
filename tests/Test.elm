@@ -24,7 +24,8 @@ main =
 randomTest : String
 randomTest =
   """
-aaa: bbb: bbb
+aaa: 
+  - hey
 ccc: ccc
   
 """
@@ -260,7 +261,7 @@ yamlValueToString : Yaml.Value -> String
 yamlValueToString value =
   case value of
     Yaml.String_ string ->
-      string 
+      "\"" ++ string ++ "\""
     
     Yaml.Float_ float ->
       String.fromFloat float ++ " (float)"
