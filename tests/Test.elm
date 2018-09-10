@@ -8,15 +8,12 @@ import Html
 {- 
 
 TODO:
-  - Numbers starting with 0
-  - Why does eee not parse? "ExpectingNumber" (with the number parser added)
-  - Check that sub list has larger indent than parent
-  - No empty strings
+  - Numbers
 -}
 
 main : Html.Html msg 
 main =
-  case Parser.run Yaml.parser randomTest of 
+  case Parser.run Yaml.parser testDocumentBegin of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -24,10 +21,10 @@ main =
 randomTest : String
 randomTest =
   """
-aaa: 
-  - hey
-ccc: ccc
-  
+- aaa:
+    "bbb": bbb
+    ccc: 'ccc'
+    
 """
 
 testDocumentBegin : String

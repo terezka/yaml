@@ -219,7 +219,6 @@ yamlListValueInline =
       , yamlNull
       , succeed identity 
           |= yamlStringInline ['\n']
-          |. newLine -- TODO necessary?
       ]
 
 
@@ -234,7 +233,6 @@ yamlListValue =
       , yamlNull
       , succeed identity 
           |= yamlStringInline ['\n']
-          |. newLine -- TODO necessary?
       ]
 
 
@@ -354,7 +352,6 @@ yamlRecordValueInline =
     , yamlNull
     , succeed identity 
         |= yamlStringInline ['\n']
-        |. newLine -- TODO necessary?
     ]
 
 
@@ -369,7 +366,6 @@ yamlRecordValue =
       , yamlNull
       , succeed identity 
           |= yamlStringInline ['\n']
-          |. newLine
       ]
 
 
