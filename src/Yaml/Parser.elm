@@ -91,7 +91,7 @@ yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
-    , yamlStringInline endings -- TODO do not accept empty string
+    , yamlStringInline endings
     ]
 
 
@@ -314,7 +314,7 @@ yamlRecordNewEntry =
               ]
 
         Err _ -> 
-          problem "I was parsing a record, but I couldn't find the \":\"!"
+          yamlRecordMissingColon
   in
   propertyName |> andThen withProperty
 
@@ -333,10 +333,10 @@ yamlRecordContinuedEntry properties subIndent =
               succeed ({ latest | value = String_ (prev ++ " " ++ new) } :: rest)
 
             ( _, _ ) ->
-              problem "Expected new property"
+              yamlRecordMissingProperty value
 
         rest ->
-          problem "Expected new property"
+          yamlRecordMissingProperty value
   in
   andThen coalesce yamlRecordValue
 
@@ -361,6 +361,24 @@ yamlRecordValue =
           |= lineOfCharacters
           |. newLine
       ]
+
+
+yamlRecordMissingColon : Parser a
+yamlRecordMissingColon =
+  problem "I was parsing a record, but I couldn't find the \":\"!"
+
+
+yamlRecordMissingProperty : Value -> Parser a
+yamlRecordMissingProperty value =
+  problem <|
+    "I was parsing a record and was expecting a new property, but instead I got " ++
+      case value of
+        Null_ -> "a null"
+        String_ string -> "a string (" ++ string ++ ")"
+        Record_ record -> "another record!"
+        List_ list -> "a list!"
+        Int_ list -> "an int!"
+        Float_ list -> "a float!"
 
 
 
@@ -421,7 +439,7 @@ yamlRecordInlineEach properties =
             |. actualSpaces
 
         Err _ -> 
-          problem "I was parsing an inline record, but I couldn't find the \":\"!"
+          errorMissingColon
   in
   propertyName |> andThen withProperty
 
@@ -430,25 +448,39 @@ yamlRecordInlineValue : Parser Value
 yamlRecordInlineValue =
   oneOf
     [ succeed identity
-        |. oneOf 
-            [ symbol " "
-            , symbol "\n"
-            , problem "I was parsing an inline record, but there must be a space after the \":\"!"
-            ]
+        |. oneOf [ singleSpace, newLine ]
         |. spaces
         |= yamlValueInline [',', '}']
         |. actualSpaces
     , succeed ()
         |. chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
-        |> andThen (\_ -> problem "I was parsing an inline record, but missing a space between the \":\" and the value!")
+        |> andThen (\_ -> errorMissingSpaceAfterColon)
     , succeed Null_
-        
     ]
-  
+
+
+errorMissingColon : Parser a 
+errorMissingColon =
+  problem "I was parsing an inline record, but I couldn't find the \":\"!"
+
+
+errorMissingSpaceAfterColon : Parser a 
+errorMissingSpaceAfterColon =
+  problem "I was parsing an inline record, but missing a space between the \":\" and the value!"
 
 
 
 -- COMMON
+
+
+colon : Parser ()
+colon =
+  symbol ":"
+
+
+comma : Parser ()
+comma =
+  symbol ","
 
 
 singleDash : Parser ()
@@ -550,10 +582,10 @@ propertyName =
             |= characters [':', '\n']
         ]
     |= oneOf
-        [ succeed valid 
-            |. anyOf [':']
+        [ succeed valid
+            |. colon
         , succeed invalid
-            |= remaining
+            |= characters ['\n'] -- TODO remaining
         ]
 
 

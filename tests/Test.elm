@@ -24,8 +24,10 @@ main =
 randomTest : String
 randomTest =
   """
-{hey:f}
-  """
+aaa: bbb: bbb
+ccc: ccc
+  
+"""
 
 testDocumentBegin : String
 testDocumentBegin =
