@@ -91,7 +91,7 @@ yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
-    , yamlStringUntil endings -- TODO do not accept empty string
+    , yamlStringInline endings -- TODO do not accept empty string
     ]
 
 
@@ -126,30 +126,25 @@ yamlString =
         ]        
 
 
-yamlStringInline : Parser Value
-yamlStringInline =
-  succeed String_ 
-    |= oneOf 
-        [ singleQuotes 
-        , doubleQuotes
-        , lineOfCharacters
-        ]
-    |. newLine
-
-
-yamlStringUntil : List Char -> Parser Value
-yamlStringUntil endings =
-  succeed String_
-    |= oneOf
-        [ succeed identity
-            |= singleQuotes
-            |. anyOf endings
-        , succeed identity
-            |= doubleQuotes
-            |. anyOf endings
-        , succeed String.trim
-            |= stringUntil endings
-        ]
+yamlStringInline : List Char -> Parser Value
+yamlStringInline endings =
+  let
+    toValue string =
+      case string of
+        "" -> Null_
+        other -> String_ other
+  in
+   oneOf
+    [ succeed String_
+        |= singleQuotes
+        |. anyOf endings
+    , succeed String_
+        |= doubleQuotes
+        |. anyOf endings
+    , succeed String.trim
+        |= characters endings
+        |> map toValue
+    ]
 
 
 
@@ -433,15 +428,23 @@ yamlRecordInlineEach properties =
 
 yamlRecordInlineValue : Parser Value
 yamlRecordInlineValue =
-  succeed identity
-    |. oneOf 
-        [ symbol " "
-        , symbol "\n"
-        , problem "I was parsing an inline record, but there must be a space after the \":\"!"
-        ]
-    |. spaces
-    |= yamlValueInline [',', '}']
-    |. actualSpaces
+  oneOf
+    [ succeed identity
+        |. oneOf 
+            [ symbol " "
+            , symbol "\n"
+            , problem "I was parsing an inline record, but there must be a space after the \":\"!"
+            ]
+        |. spaces
+        |= yamlValueInline [',', '}']
+        |. actualSpaces
+    , succeed ()
+        |. chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
+        |> andThen (\_ -> problem "I was parsing an inline record, but missing a space between the \":\" and the value!")
+    , succeed Null_
+        
+    ]
+  
 
 
 
@@ -468,8 +471,8 @@ anyOf endings =
   chompIf (\c -> List.member c endings)
 
 
-stringUntil : List Char -> Parser String
-stringUntil endings =
+characters : List Char -> Parser String
+characters endings =
   succeed ()
     |. chompWhile (\c -> not (List.member c endings))
     |> getChompedString
@@ -544,7 +547,7 @@ propertyName =
         , succeed identity
             |= doubleQuotes
         , succeed String.trim
-            |= stringUntil [':', '\n']
+            |= characters [':', '\n']
         ]
     |= oneOf
         [ succeed valid 
@@ -558,7 +561,7 @@ singleQuotes : Parser String
 singleQuotes =
   succeed (String.replace "\\" "\\\\")
     |. symbol "'"
-    |= stringUntil ['\'']
+    |= characters ['\'']
     |. symbol "'"
     |. actualSpaces
 
@@ -567,7 +570,7 @@ doubleQuotes : Parser String
 doubleQuotes =
   succeed identity
     |. symbol "\""
-    |= stringUntil ['"']
+    |= characters ['"']
     |. symbol "\""
     |. actualSpaces
 

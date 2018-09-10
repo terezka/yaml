@@ -24,7 +24,7 @@ main =
 randomTest : String
 randomTest =
   """
-
+{hey:f}
   """
 
 testDocumentBegin : String
