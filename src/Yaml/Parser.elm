@@ -46,8 +46,8 @@ yamlValue : Int -> Parser Ast.Value
 yamlValue indent =
   oneOf
     [ Yaml.Parser.Record.inline { child = yamlValueInline }
-    , Yaml.Parser.List.inline { child = yamlValueInline }
-    , yamlList indent
+    , Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
+    , Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel } indent
     , yamlRecord True indent
     , yamlNull
     , Yaml.Parser.String.toplevel
@@ -58,10 +58,33 @@ yamlValueInline : List Char -> Parser Ast.Value
 yamlValueInline endings =
   oneOf
     [ Yaml.Parser.Record.inline { child = yamlValueInline }
-    , Yaml.Parser.List.inline { child = yamlValueInline }
+    , Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
     , Yaml.Parser.String.inline endings
     ]
 
+
+yamlValueToplevelInline : Parser Ast.Value
+yamlValueToplevelInline =
+  lazy <| \_ -> 
+    oneOf
+      [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
+      , Yaml.Parser.Record.inline { child = yamlValueInline }
+      , yamlNull
+      , Yaml.Parser.String.inline ['\n']
+      ]
+
+
+yamlValueToplevel : Parser Ast.Value
+yamlValueToplevel =
+  lazy <| \_ -> 
+    oneOf
+      [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
+      , Yaml.Parser.Record.inline { child = yamlValueInline }
+      , andThen (Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel }) getCol
+      , andThen (yamlRecord False) getCol
+      , yamlNull
+      , Yaml.Parser.String.inline ['\n']
+      ]
 
 
 -- YAML / NULL
@@ -71,93 +94,6 @@ yamlNull : Parser Ast.Value
 yamlNull =
   succeed Ast.Null_
     |. U.newLine
-
-
-
--- YAML / LIST
-
-
-yamlList : Int -> Parser Ast.Value
-yamlList indent =
-  let
-    withValue value =
-      succeed Ast.List_
-        |= loop [ value ] (yamlListEach indent)
-  in
-  yamlListNewEntry
-    |> andThen withValue
-
-
-yamlListEach : Int -> List Ast.Value -> Parser (Step (List Ast.Value) (List Ast.Value))
-yamlListEach indent values =
-  let finish = Done (List.reverse values)
-      next value = Loop (value :: values)
-      continued = Loop
-  in
-  U.checkIndent indent
-    { smaller = succeed finish
-    , exactly = oneOf [ map next yamlListNewEntry, succeed finish ]
-    , larger  = map continued << yamlListContinuedEntry values
-    , ending = succeed finish
-    }
-
-
-yamlListNewEntry : Parser Ast.Value
-yamlListNewEntry =
-  succeed identity
-    |. U.dash
-    |= oneOf 
-        [ succeed Ast.Null_
-            |. U.newLine
-        , succeed identity
-            |. U.space
-            |. U.spaces
-            |= yamlListValue
-        ]
-
-
-yamlListContinuedEntry : List Ast.Value -> Int -> Parser (List Ast.Value)
-yamlListContinuedEntry values subIndent =
-  let
-    coalesce value =
-      case ( values, value ) of
-        ( Ast.Null_ :: rest, _ ) -> 
-          succeed (value :: rest)
-
-        ( Ast.String_ prev :: rest, Ast.String_ new ) -> 
-          succeed (Ast.String_ (prev ++ " " ++ new) :: rest)
-
-        ( _ :: rest, Ast.String_ _ ) -> -- TODO don't skip new lines
-          problem "I was parsing a record, but I got more strings when expected a new property!"
-
-        ( _, _ ) -> 
-          succeed (value :: values)
-  in
-  andThen coalesce yamlListValue
-
-
-yamlListValueInline : Parser Ast.Value
-yamlListValueInline =
-  lazy <| \_ -> 
-    oneOf
-      [ Yaml.Parser.List.inline { child = yamlValueInline }
-      , Yaml.Parser.Record.inline { child = yamlValueInline }
-      , yamlNull
-      , Yaml.Parser.String.inline ['\n']
-      ]
-
-
-yamlListValue : Parser Ast.Value
-yamlListValue =
-  lazy <| \_ -> 
-    oneOf
-      [ Yaml.Parser.List.inline { child = yamlValueInline }
-      , Yaml.Parser.Record.inline { child = yamlValueInline }
-      , andThen yamlList getCol
-      , andThen (yamlRecord False) getCol
-      , yamlNull
-      , Yaml.Parser.String.inline ['\n']
-      ]
 
 
 
@@ -200,7 +136,7 @@ yamlRecordEach indent properties =
 
       yamlRecordNextOrList latest rest =
         oneOf 
-          [ map (\list -> continued ({ latest | value = list } :: rest)) (yamlList indent)
+          [ map (\list -> continued ({ latest | value = list } :: rest)) (Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel } indent)
           , map next yamlRecordNewEntry
           , succeed finish 
           ]
@@ -271,7 +207,7 @@ yamlRecordContinuedEntry properties subIndent =
 yamlRecordValueInline : Parser Ast.Value
 yamlRecordValueInline =
   oneOf
-    [ Yaml.Parser.List.inline { child = yamlValueInline }
+    [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
     , Yaml.Parser.Record.inline { child = yamlValueInline }
     , yamlNull
     , succeed identity 
@@ -283,9 +219,9 @@ yamlRecordValue : Parser Ast.Value
 yamlRecordValue =
   lazy <| \_ -> 
     oneOf
-      [ Yaml.Parser.List.inline { child = yamlValueInline }
+      [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
       , Yaml.Parser.Record.inline { child = yamlValueInline }
-      , andThen yamlList getCol
+      , andThen (Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel }) getCol
       , andThen (yamlRecord False) getCol
       , yamlNull
       , succeed identity 
