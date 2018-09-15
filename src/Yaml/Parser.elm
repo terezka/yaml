@@ -50,8 +50,8 @@ value =
     [ Yaml.Parser.String.exceptions
     , Yaml.Parser.Record.inline { child = valueInline }
     , Yaml.Parser.List.inline { child = valueInline }
-    , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
-    , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) P.getCol
+    , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) U.nextIndent
+    , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) U.nextIndent
     , Yaml.Parser.String.toplevel
     ]
 
@@ -66,16 +66,6 @@ valueToplevel =
       , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
       , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) P.getCol
       , Yaml.Parser.Null.inline
-      , Yaml.Parser.String.inline ['\n']
-      ]
-
-
-valueToplevelInline : P.Parser Ast.Value
-valueToplevelInline =
-  P.lazy <| \_ -> 
-    P.oneOf
-      [ Yaml.Parser.List.inline { child = valueInline }
-      , Yaml.Parser.Record.inline { child = valueInline }
       , Yaml.Parser.String.inline ['\n']
       ]
 
@@ -96,7 +86,7 @@ valueInline endings =
 
 toplevelRecordConfig : Yaml.Parser.Record.Toplevel
 toplevelRecordConfig =
-  { childInline = valueToplevelInline
+  { childInline = valueInline ['\n']
   , childToplevel = valueToplevel
   , list = Yaml.Parser.List.toplevel { child = valueToplevel }
   }

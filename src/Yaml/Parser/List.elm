@@ -44,7 +44,7 @@ toplevelNewEntry config =
   P.succeed identity
     |. U.dash
     |= P.oneOf 
-        [ P.succeed Ast.Null_
+        [ P.succeed Ast.Null_ -- TODO
             |. U.newLine
         , P.succeed identity
             |. U.space

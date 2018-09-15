@@ -20,9 +20,13 @@ begins =
 dashes : Int -> P.Parser (a -> a)
 dashes indent =
   if indent == 1 then
-    P.succeed identity
-      |. U.threeDashes
-      |. P.oneOf [ U.space, U.newLine ]
+    P.oneOf
+      [ P.succeed identity
+          |. U.threeDashes
+          |. P.oneOf [ U.space, U.newLine ]
+      , P.succeed identity
+          |. U.whitespace
+      ]
   else
     P.succeed identity
       |. U.whitespace

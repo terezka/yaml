@@ -29,7 +29,7 @@ randomTest =
 testDocumentBegin : String
 testDocumentBegin =
   """
----
+---   
 
 - id:
     "bioguide": B000944
