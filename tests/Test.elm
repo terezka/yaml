@@ -248,31 +248,5 @@ errorToString deadEnd =
 
 yamlValueToHtml : Yaml.Value -> Html.Html msg
 yamlValueToHtml value =
-  Html.text (yamlValueToString value)
+  Html.text (Yaml.toString value)
 
-
-yamlValueToString : Yaml.Value -> String
-yamlValueToString value =
-  case value of
-    Yaml.String_ string ->
-      "\"" ++ string ++ "\""
-    
-    Yaml.Float_ float ->
-      String.fromFloat float ++ " (float)"
-    
-    Yaml.Int_ int ->
-      String.fromInt int ++ " (int)"
-    
-    Yaml.List_ list ->
-      "[ " ++ String.join ", " (List.map yamlValueToString list) ++ " ]"
-    
-    Yaml.Record_ properties ->
-      "{ " ++ String.join ", " (List.map yamlPropertyToString properties) ++ " }"
-    
-    Yaml.Null_ ->
-      "Null"
-
-
-yamlPropertyToString : Yaml.Property -> String
-yamlPropertyToString {name, value} =
-  name ++ ": " ++ yamlValueToString value

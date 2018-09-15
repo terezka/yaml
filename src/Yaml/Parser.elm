@@ -1,41 +1,31 @@
-module Yaml.Parser exposing (Value(..), Property, parser, run)
+module Yaml.Parser exposing (Value, toString, parser, run)
 
 import Parser exposing (..)
-
-
-
--- AST
+import Yaml.Parser.Ast as Ast
 
 
 {-| -}
-type Value
-  = String_ String
-  | Float_ Float
-  | Int_ Int
-  | List_ (List Value)
-  | Record_ (List Property)
-  | Null_
+type alias Value =
+  Ast.Value
 
 
 {-| -}
-type alias Property =
-  { name : String 
-  , value : Value 
-  }
-
+toString : Value -> String
+toString =
+  Ast.toString
 
 
 -- PARSER
 
 
 {-| -}
-run : String -> Result (List Parser.DeadEnd) Value
+run : String -> Result (List Parser.DeadEnd) Ast.Value
 run =
   Parser.run parser
 
 
 {-| -}
-parser : Parser Value
+parser : Parser Ast.Value
 parser =
   succeed identity
     |= andThen yamlValue documentBegins
@@ -80,7 +70,7 @@ documentEnds =
 -- YAML / VALUE
 
 
-yamlValue : Int -> Parser Value
+yamlValue : Int -> Parser Ast.Value
 yamlValue indent =
   oneOf
     [ yamlRecordInline
@@ -92,7 +82,7 @@ yamlValue indent =
     ]
 
 
-yamlValueInline : List Char -> Parser Value
+yamlValueInline : List Char -> Parser Ast.Value
 yamlValueInline endings =
   oneOf
     [ yamlRecordInline
@@ -105,9 +95,9 @@ yamlValueInline endings =
 -- YAML / NULL
 
 
-yamlNull : Parser Value
+yamlNull : Parser Ast.Value
 yamlNull =
-  succeed Null_
+  succeed Ast.Null_
     |. newLine
 
 
@@ -115,7 +105,7 @@ yamlNull =
 -- YAML / STRING
 
 
-yamlString : Parser Value
+yamlString : Parser Ast.Value
 yamlString =
   let
     multiline result =
@@ -125,22 +115,22 @@ yamlString =
         ]
   in
   oneOf
-    [ succeed String_
+    [ succeed Ast.String_
         |= singleQuotes
-    , succeed String_
+    , succeed Ast.String_
         |= doubleQuotes
     , succeed stringToValue
         |= loop [] multiline
     ]        
 
 
-yamlStringInline : List Char -> Parser Value
+yamlStringInline : List Char -> Parser Ast.Value
 yamlStringInline endings =
    oneOf
-    [ succeed String_
+    [ succeed Ast.String_
         |= singleQuotes
         |. anyOf endings
-    , succeed String_
+    , succeed Ast.String_
         |= doubleQuotes
         |. anyOf endings
     , succeed stringToValue
@@ -152,18 +142,18 @@ yamlStringInline endings =
 -- YAML / LIST
 
 
-yamlList : Int -> Parser Value
+yamlList : Int -> Parser Ast.Value
 yamlList indent =
   let
     withValue value =
-      succeed List_
+      succeed Ast.List_
         |= loop [ value ] (yamlListEach indent)
   in
   yamlListNewEntry
     |> andThen withValue
 
 
-yamlListEach : Int -> List Value -> Parser (Step (List Value) (List Value))
+yamlListEach : Int -> List Ast.Value -> Parser (Step (List Ast.Value) (List Ast.Value))
 yamlListEach indent values =
   let finish = Done (List.reverse values)
       next value = Loop (value :: values)
@@ -177,12 +167,12 @@ yamlListEach indent values =
     }
 
 
-yamlListNewEntry : Parser Value
+yamlListNewEntry : Parser Ast.Value
 yamlListNewEntry =
   succeed identity
     |. singleDash
     |= oneOf 
-        [ succeed Null_
+        [ succeed Ast.Null_
             |. newLine
         , succeed identity
             |. singleSpace
@@ -191,18 +181,18 @@ yamlListNewEntry =
         ]
 
 
-yamlListContinuedEntry : List Value -> Int -> Parser (List Value)
+yamlListContinuedEntry : List Ast.Value -> Int -> Parser (List Ast.Value)
 yamlListContinuedEntry values subIndent =
   let
     coalesce value =
       case ( values, value ) of
-        ( Null_ :: rest, _ ) -> 
+        ( Ast.Null_ :: rest, _ ) -> 
           succeed (value :: rest)
 
-        ( String_ prev :: rest, String_ new ) -> 
-          succeed (String_ (prev ++ " " ++ new) :: rest)
+        ( Ast.String_ prev :: rest, Ast.String_ new ) -> 
+          succeed (Ast.String_ (prev ++ " " ++ new) :: rest)
 
-        ( _ :: rest, String_ _ ) -> -- TODO don't skip new lines
+        ( _ :: rest, Ast.String_ _ ) -> -- TODO don't skip new lines
           problem "I was parsing a record, but I got more strings when expected a new property!"
 
         ( _, _ ) -> 
@@ -211,7 +201,7 @@ yamlListContinuedEntry values subIndent =
   andThen coalesce yamlListValue
 
 
-yamlListValueInline : Parser Value
+yamlListValueInline : Parser Ast.Value
 yamlListValueInline =
   lazy <| \_ -> 
     oneOf
@@ -223,7 +213,7 @@ yamlListValueInline =
       ]
 
 
-yamlListValue : Parser Value
+yamlListValue : Parser Ast.Value
 yamlListValue =
   lazy <| \_ -> 
     oneOf
@@ -241,7 +231,7 @@ yamlListValue =
 -- YAML / RECORD
 
 
-yamlRecord : Bool -> Int -> Parser Value
+yamlRecord : Bool -> Int -> Parser Ast.Value
 yamlRecord first indent =
   let
     withProperty name =
@@ -252,18 +242,18 @@ yamlRecord first indent =
   propertyName first |> andThen withProperty
 
 
-yamlRecordConfirmed : Int -> String -> Parser Value
+yamlRecordConfirmed : Int -> String -> Parser Ast.Value
 yamlRecordConfirmed indent name =
   let
     withValue value =
-      succeed Record_
-        |= loop [ Property name value ] (yamlRecordEach indent)
+      succeed Ast.Record_
+        |= loop [ Ast.Property name value ] (yamlRecordEach indent)
   in
   yamlRecordValueInline
     |> andThen withValue
 
 
-yamlRecordEach : Int -> List Property -> Parser (Step (List Property) (List Property))
+yamlRecordEach : Int -> List Ast.Property -> Parser (Step (List Ast.Property) (List Ast.Property))
 yamlRecordEach indent properties =
   let finish = Done (List.reverse properties)
       next property = Loop (property :: properties)
@@ -288,7 +278,7 @@ yamlRecordEach indent properties =
         case properties of 
           latest :: rest ->
             case latest.value of
-              Null_ ->
+              Ast.Null_ ->
                 -- Lists are allowed on the same level as the record
                 yamlRecordNextOrList latest rest
                 
@@ -302,13 +292,13 @@ yamlRecordEach indent properties =
     }
 
 
-yamlRecordNewEntry : Parser Property
+yamlRecordNewEntry : Parser Ast.Property
 yamlRecordNewEntry =
   let
     withProperty name =
       case name of 
         Ok validName ->
-          map (Property validName) <|
+          map (Ast.Property validName) <|
             oneOf 
               [ yamlNull
               , succeed identity
@@ -323,18 +313,18 @@ yamlRecordNewEntry =
   propertyName False |> andThen withProperty
 
 
-yamlRecordContinuedEntry : List Property -> Int -> Parser (List Property)
+yamlRecordContinuedEntry : List Ast.Property -> Int -> Parser (List Ast.Property)
 yamlRecordContinuedEntry properties subIndent =
   let
     coalesce value =
       case properties of
         latest :: rest ->
           case ( latest.value, value ) of
-            ( Null_, _ ) -> 
+            ( Ast.Null_, _ ) -> 
               succeed ({ latest | value = value } :: rest)
 
-            ( String_ prev, String_ new ) -> -- TODO don't skip new lines
-              succeed ({ latest | value = String_ (prev ++ " " ++ new) } :: rest)
+            ( Ast.String_ prev, Ast.String_ new ) -> -- TODO don't skip new lines
+              succeed ({ latest | value = Ast.String_ (prev ++ " " ++ new) } :: rest)
 
             ( _, _ ) ->
               yamlRecordMissingProperty value
@@ -345,7 +335,7 @@ yamlRecordContinuedEntry properties subIndent =
   andThen coalesce yamlRecordValue
 
 
-yamlRecordValueInline : Parser Value
+yamlRecordValueInline : Parser Ast.Value
 yamlRecordValueInline =
   oneOf
     [ yamlListInline
@@ -356,7 +346,7 @@ yamlRecordValueInline =
     ]
 
 
-yamlRecordValue : Parser Value
+yamlRecordValue : Parser Ast.Value
 yamlRecordValue =
   lazy <| \_ -> 
     oneOf
@@ -375,26 +365,26 @@ yamlRecordMissingColon =
   problem "I was parsing a record, but I couldn't find the \":\"!"
 
 
-yamlRecordMissingProperty : Value -> Parser a
+yamlRecordMissingProperty : Ast.Value -> Parser a
 yamlRecordMissingProperty value =
   problem <|
     "I was parsing a record and was expecting a new property, but instead I got " ++
       case value of
-        Null_ -> "a null"
-        String_ string -> "a string (" ++ string ++ ")"
-        Record_ record -> "another record!"
-        List_ list -> "a list!"
-        Int_ list -> "an int!"
-        Float_ list -> "a float!"
+        Ast.Null_ -> "a null"
+        Ast.String_ string -> "a string (" ++ string ++ ")"
+        Ast.Record_ record -> "another record!"
+        Ast.List_ list -> "a list!"
+        Ast.Int_ list -> "an int!"
+        Ast.Float_ list -> "a float!"
 
 
 
 -- YAML / LIST / INLINE
 
 
-yamlListInline : Parser Value
+yamlListInline : Parser Ast.Value
 yamlListInline =
-  succeed List_
+  succeed Ast.List_
     |. symbol "["
     |. actualSpaces
     |= oneOf
@@ -404,7 +394,7 @@ yamlListInline =
         ]
 
 
-yamlListInlineEach : List Value -> Parser (Step (List Value) (List Value))
+yamlListInlineEach : List Ast.Value -> Parser (Step (List Ast.Value) (List Ast.Value))
 yamlListInlineEach values =
   succeed (\v next -> next (v :: values))
     |= yamlValueInline [',', ']']
@@ -420,9 +410,9 @@ yamlListInlineEach values =
 -- YAML / RECORD / INLINE
 
 
-yamlRecordInline : Parser Value
+yamlRecordInline : Parser Ast.Value
 yamlRecordInline =
-  succeed Record_
+  succeed Ast.Record_
     |. symbol "{"
     |. actualSpaces
     |= oneOf
@@ -431,13 +421,13 @@ yamlRecordInline =
         ]
 
 
-yamlRecordInlineEach : List Property -> Parser (Step (List Property) (List Property))
+yamlRecordInlineEach : List Ast.Property -> Parser (Step (List Ast.Property) (List Ast.Property))
 yamlRecordInlineEach properties =
   let
     withProperty name =
       case name of 
         Ok validName ->
-          succeed (\v next -> next (Property validName v :: properties))
+          succeed (\v next -> next (Ast.Property validName v :: properties))
             |= yamlRecordInlineValue
             |= oneOf
                 [ succeed Loop |. symbol ","
@@ -451,7 +441,7 @@ yamlRecordInlineEach properties =
   propertyName False |> andThen withProperty
 
 
-yamlRecordInlineValue : Parser Value
+yamlRecordInlineValue : Parser Ast.Value
 yamlRecordInlineValue =
   oneOf
     [ succeed identity
@@ -462,7 +452,7 @@ yamlRecordInlineValue =
     , succeed ()
         |. chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
         |> andThen (\_ -> errorMissingSpaceAfterColon)
-    , succeed Null_
+    , succeed Ast.Null_
     ]
 
 
@@ -566,7 +556,7 @@ checkIndent indent next =
 -- PROPERTY NAME
 
 
-propertyName : Bool -> Parser (Result Value String)
+propertyName : Bool -> Parser (Result Ast.Value String)
 propertyName first =
   let remaining =
         if first then everything else characters ['\n']
@@ -628,14 +618,14 @@ apply v f =
   f v
 
 
-stringToValue : String -> Value
+stringToValue : String -> Ast.Value
 stringToValue string =
   case String.trim string of
-    "" -> Null_
+    "" -> Ast.Null_
     other -> 
       case String.toInt other of
-        Just int -> Int_ int
+        Just int -> Ast.Int_ int
         Nothing ->
           case String.toFloat other of
-            Just float -> Float_ float
-            Nothing -> String_ other
+            Just float -> Ast.Float_ float
+            Nothing -> Ast.String_ other

@@ -84,31 +84,4 @@ view model =
 
 yamlValueToHtml : Yaml.Parser.Value -> Html.Html msg
 yamlValueToHtml value =
-  Html.text (yamlValueToString value)
-
-
-yamlValueToString : Yaml.Parser.Value -> String
-yamlValueToString value =
-  case value of
-    Yaml.Parser.String_ string ->
-      "\"" ++ string ++ "\""
-    
-    Yaml.Parser.Float_ float ->
-      String.fromFloat float ++ " (float)"
-    
-    Yaml.Parser.Int_ int ->
-      String.fromInt int ++ " (int)"
-    
-    Yaml.Parser.List_ list ->
-      "[ " ++ String.join ", " (List.map yamlValueToString list) ++ " ]"
-    
-    Yaml.Parser.Record_ properties ->
-      "{ " ++ String.join ", " (List.map yamlPropertyToString properties) ++ " }"
-    
-    Yaml.Parser.Null_ ->
-      "Null"
-
-
-yamlPropertyToString : Yaml.Parser.Property -> String
-yamlPropertyToString {name, value} =
-  name ++ ": " ++ yamlValueToString value
+  Html.text (Yaml.Parser.toString value)
