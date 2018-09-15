@@ -19,7 +19,10 @@ randomTest : String
 randomTest =
   """
 --- 
-[ hey ]
+[aaa
+bbb
+ccc # trash
+]
 
 ...
 """

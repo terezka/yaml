@@ -92,7 +92,7 @@ inline config =
 inlineEach : Inline -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
 inlineEach config values =
   P.succeed (\v next -> next (v :: values))
-    |= P.map (Debug.log "here") (config.child [',', ']'])
+    |= config.child [',', ']']
     |. U.whitespace
     |= P.oneOf
         [ P.succeed P.Loop |. P.symbol "," 
