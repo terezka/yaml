@@ -149,7 +149,7 @@ toplevelMissingProperty value =
 
 {-| -}
 type alias Inline =
-  { inline : List Char -> P.Parser Ast.Value  }
+  { child : List Char -> P.Parser Ast.Value  }
 
 
 {-| -}
@@ -191,7 +191,7 @@ inlineValue config =
     [ P.succeed identity
         |. P.oneOf [ U.space, U.newLine ]
         |. U.whitespace
-        |= config.inline [',', '}']
+        |= config.child [',', '}']
         |. U.spaces
     , P.succeed ()
         |. P.chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')

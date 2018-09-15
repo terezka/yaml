@@ -48,7 +48,7 @@ value : P.Parser Ast.Value
 value =
   P.oneOf
     [ Yaml.Parser.String.exceptions
-    , Yaml.Parser.Record.inline { inline = valueInline }
+    , Yaml.Parser.Record.inline { child = valueInline }
     , Yaml.Parser.List.inline { child = valueInline }
     , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
     , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) P.getCol
@@ -57,13 +57,17 @@ value =
     ]
 
 
-valueInline : List Char -> P.Parser Ast.Value
-valueInline endings =
+valueToplevel : P.Parser Ast.Value
+valueToplevel =
   P.lazy <| \_ -> 
     P.oneOf
-      [ Yaml.Parser.Record.inline { inline = valueInline }
+      [ Yaml.Parser.String.exceptions
+      , Yaml.Parser.Record.inline { child = valueInline }
       , Yaml.Parser.List.inline { child = valueInline }
-      , Yaml.Parser.String.inline endings
+      , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
+      , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) P.getCol
+      , Yaml.Parser.Null.inline
+      , Yaml.Parser.String.inline ['\n']
       ]
 
 
@@ -72,22 +76,18 @@ valueToplevelInline =
   P.lazy <| \_ -> 
     P.oneOf
       [ Yaml.Parser.List.inline { child = valueInline }
-      , Yaml.Parser.Record.inline { inline = valueInline }
-      , Yaml.Parser.Null.inline
+      , Yaml.Parser.Record.inline { child = valueInline }
       , Yaml.Parser.String.inline ['\n']
       ]
 
 
-valueToplevel : P.Parser Ast.Value
-valueToplevel =
+valueInline : List Char -> P.Parser Ast.Value
+valueInline endings =
   P.lazy <| \_ -> 
     P.oneOf
-      [ Yaml.Parser.List.inline { child = valueInline }
-      , Yaml.Parser.Record.inline { inline = valueInline }
-      , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
-      , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) P.getCol
-      , Yaml.Parser.Null.inline
-      , Yaml.Parser.String.inline ['\n']
+      [ Yaml.Parser.Record.inline { child = valueInline }
+      , Yaml.Parser.List.inline { child = valueInline }
+      , Yaml.Parser.String.inline endings
       ]
 
 

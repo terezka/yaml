@@ -11,7 +11,7 @@ import Html
 
 main : Html.Html msg 
 main =
-  case Yaml.run randomTest of 
+  case Yaml.run testDocumentBegin of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -19,14 +19,17 @@ main =
 randomTest : String
 randomTest =
   """
---- 234 
+---
+
+
 ...
 
 """
 
 testDocumentBegin : String
 testDocumentBegin =
-  """--- 
+  """
+---
 
 - id:
     "bioguide": B000944
