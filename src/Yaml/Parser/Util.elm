@@ -69,7 +69,7 @@ whitespace : P.Parser ()
 whitespace =
   P.succeed ()
     |. P.spaces
-    |. P.oneOf [ comment, P.spaces ] -- TODO
+    |. P.oneOf [ comment, P.spaces ]
     |. P.spaces
 
 
