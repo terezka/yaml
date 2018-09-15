@@ -1,4 +1,4 @@
-module Yaml.Parser.Ast exposing (Value(..), Property, toString)
+module Yaml.Parser.Ast exposing (Value(..), Property, toString, fromString)
 
 
 
@@ -20,6 +20,21 @@ type alias Property =
   { name : String 
   , value : Value 
   }
+
+
+{-| -}
+fromString : String -> Value
+fromString string =
+  case String.trim string of
+    "" -> Null_
+    other -> 
+      case String.toInt other of
+        Just int -> Int_ int
+        Nothing ->
+          case String.toFloat other of
+            Just float -> Float_ float
+            Nothing -> String_ other
+
 
 
 

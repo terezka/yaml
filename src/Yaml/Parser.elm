@@ -2,6 +2,7 @@ module Yaml.Parser exposing (Value, toString, parser, run)
 
 import Parser exposing (..)
 import Yaml.Parser.Ast as Ast
+import Yaml.Parser.Util as U
 
 
 {-| -}
@@ -13,6 +14,7 @@ type alias Value =
 toString : Value -> String
 toString =
   Ast.toString
+
 
 
 -- PARSER
@@ -43,9 +45,9 @@ documentBegins =
     |= oneOf 
         [ succeed identity
             |. threeDashesAndTrash 
-            |= nextIndent
+            |= U.nextIndent
         , succeed identity
-            |= nextIndent
+            |= U.nextIndent
         ]
 
 
@@ -62,7 +64,7 @@ threeDashesAndTrash =
 documentEnds : Parser (a -> a)
 documentEnds =
   succeed identity
-    |. spaces
+    |. U.whitespace
     |. end
 
 
@@ -98,7 +100,7 @@ yamlValueInline endings =
 yamlNull : Parser Ast.Value
 yamlNull =
   succeed Ast.Null_
-    |. newLine
+    |. U.newLine
 
 
 
@@ -110,16 +112,16 @@ yamlString =
   let
     multiline result =
       oneOf
-        [ map (\i -> Loop (i :: result)) lineOfCharacters
+        [ map (\i -> Loop (i :: result)) U.lineOfCharacters
         , succeed (Done (List.reverse result |> String.concat))
         ]
   in
   oneOf
     [ succeed Ast.String_
-        |= singleQuotes
+        |= U.singleQuotes
     , succeed Ast.String_
-        |= doubleQuotes
-    , succeed stringToValue
+        |= U.doubleQuotes
+    , succeed Ast.fromString
         |= loop [] multiline
     ]        
 
@@ -128,13 +130,13 @@ yamlStringInline : List Char -> Parser Ast.Value
 yamlStringInline endings =
    oneOf
     [ succeed Ast.String_
-        |= singleQuotes
-        |. anyOf endings
+        |= U.singleQuotes
+        |. U.anyOf endings
     , succeed Ast.String_
-        |= doubleQuotes
-        |. anyOf endings
-    , succeed stringToValue
-        |= characters endings
+        |= U.doubleQuotes
+        |. U.anyOf endings
+    , succeed Ast.fromString
+        |= U.characters endings
     ]
 
 
@@ -159,7 +161,7 @@ yamlListEach indent values =
       next value = Loop (value :: values)
       continued = Loop
   in
-  checkIndent indent
+  U.checkIndent indent
     { smaller = succeed finish
     , exactly = oneOf [ map next yamlListNewEntry, succeed finish ]
     , larger  = map continued << yamlListContinuedEntry values
@@ -170,13 +172,13 @@ yamlListEach indent values =
 yamlListNewEntry : Parser Ast.Value
 yamlListNewEntry =
   succeed identity
-    |. singleDash
+    |. U.dash
     |= oneOf 
         [ succeed Ast.Null_
-            |. newLine
+            |. U.newLine
         , succeed identity
-            |. singleSpace
-            |. manySpaces
+            |. U.space
+            |. U.spaces
             |= yamlListValue
         ]
 
@@ -239,7 +241,7 @@ yamlRecord first indent =
         Ok validName -> yamlRecordConfirmed indent validName
         Err value -> succeed value
   in
-  propertyName first |> andThen withProperty
+  U.propertyName first |> andThen withProperty
 
 
 yamlRecordConfirmed : Int -> String -> Parser Ast.Value
@@ -272,7 +274,7 @@ yamlRecordEach indent properties =
           , succeed finish 
           ]
   in
-  checkIndent indent
+  U.checkIndent indent
     { smaller = succeed finish
     , exactly = 
         case properties of 
@@ -302,15 +304,15 @@ yamlRecordNewEntry =
             oneOf 
               [ yamlNull
               , succeed identity
-                  |. singleSpace
-                  |. manySpaces
+                  |. U.space
+                  |. U.spaces
                   |= yamlRecordValueInline
               ]
 
         Err _ -> 
           yamlRecordMissingColon
   in
-  propertyName False |> andThen withProperty
+  U.propertyName False |> andThen withProperty
 
 
 yamlRecordContinuedEntry : List Ast.Property -> Int -> Parser (List Ast.Property)
@@ -386,7 +388,7 @@ yamlListInline : Parser Ast.Value
 yamlListInline =
   succeed Ast.List_
     |. symbol "["
-    |. actualSpaces
+    |. U.spaces
     |= oneOf
         [ succeed []
             |. symbol "}"
@@ -398,12 +400,12 @@ yamlListInlineEach : List Ast.Value -> Parser (Step (List Ast.Value) (List Ast.V
 yamlListInlineEach values =
   succeed (\v next -> next (v :: values))
     |= yamlValueInline [',', ']']
-    |. actualSpaces
+    |. U.spaces
     |= oneOf
         [ succeed Loop |. symbol "," 
         , succeed (Done << List.reverse) |. symbol "]"
         ]
-    |. actualSpaces
+    |. U.spaces
 
 
 
@@ -414,7 +416,7 @@ yamlRecordInline : Parser Ast.Value
 yamlRecordInline =
   succeed Ast.Record_
     |. symbol "{"
-    |. actualSpaces
+    |. U.spaces
     |= oneOf
         [ succeed [] |. symbol "}"
         , loop [] yamlRecordInlineEach
@@ -430,25 +432,25 @@ yamlRecordInlineEach properties =
           succeed (\v next -> next (Ast.Property validName v :: properties))
             |= yamlRecordInlineValue
             |= oneOf
-                [ succeed Loop |. symbol ","
+                [ succeed Loop |. U.comma
                 , succeed (Done << List.reverse) |. symbol "}"
                 ]
-            |. actualSpaces
+            |. U.spaces
 
         Err _ -> 
           errorMissingColon
   in
-  propertyName False |> andThen withProperty
+  U.propertyName False |> andThen withProperty
 
 
 yamlRecordInlineValue : Parser Ast.Value
 yamlRecordInlineValue =
   oneOf
     [ succeed identity
-        |. oneOf [ singleSpace, newLine ]
-        |. spaces
+        |. oneOf [ U.space, U.newLine ]
+        |. U.whitespace -- TODO ?
         |= yamlValueInline [',', '}']
-        |. actualSpaces
+        |. U.spaces
     , succeed ()
         |. chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
         |> andThen (\_ -> errorMissingSpaceAfterColon)
@@ -466,166 +468,3 @@ errorMissingSpaceAfterColon =
   problem "I was parsing an inline record, but missing a space between the \":\" and the value!"
 
 
-
--- COMMON
-
-
-colon : Parser ()
-colon =
-  symbol ":"
-
-
-comma : Parser ()
-comma =
-  symbol ","
-
-
-singleDash : Parser ()
-singleDash =
-  symbol "-"
-
-
-singleSpace : Parser ()
-singleSpace =
-  symbol " "
-
-
-manySpaces : Parser ()
-manySpaces =
-  chompWhile (\c -> c == ' ')
-
-
-anyOf : List Char -> Parser ()
-anyOf endings =
-  chompIf (\c -> List.member c endings)
-
-
-characters : List Char -> Parser String
-characters endings =
-  succeed ()
-    |. chompWhile (\c -> not (List.member c endings))
-    |> getChompedString
-
-
-actualSpaces : Parser ()
-actualSpaces =
-  chompWhile (\c -> c == ' ')
-
-
-newLines : Parser ()
-newLines =
-  chompWhile (\c -> c == '\n')
-
-
-newLine : Parser ()
-newLine =
-  chompIf (\c -> c == '\n')
-
-
-nextIndent : Parser Int
-nextIndent =
-  loop 0 nextIndentHelp
-
-
-nextIndentHelp : Int -> Parser (Step Int Int)
-nextIndentHelp _ =
-  succeed (\i next -> next i)
-    |. actualSpaces
-    |= getCol
-    |= oneOf 
-        [ succeed Loop |. newLine
-        , succeed Done
-        ]
-
-
-checkIndent : Int -> { smaller : Parser a, exactly : Parser a, larger : Int -> Parser a, ending : Parser a } -> Parser a
-checkIndent indent next =
-  let check actual =
-        oneOf
-          [ andThen (always next.ending) end 
-          , if actual == indent then next.exactly
-            else if actual > indent then next.larger actual
-            else next.smaller
-          ]
-        
-  in
-  andThen check nextIndent
-
-
-
--- PROPERTY NAME
-
-
-propertyName : Bool -> Parser (Result Ast.Value String)
-propertyName first =
-  let remaining =
-        if first then everything else characters ['\n']
-
-      everything =
-        succeed ()
-          |. chompWhile (always True)
-          |> getChompedString
-
-      valid = Ok
-      invalid s2 s1 = 
-        Err (stringToValue (s1 ++ s2))
-  in
-  succeed apply
-    |= oneOf
-        [ succeed identity
-            |= singleQuotes
-        , succeed identity
-            |= doubleQuotes
-        , succeed String.trim
-            |= characters [':', '\n']
-        ]
-    |= oneOf
-        [ succeed valid
-            |. colon
-        , succeed invalid
-            |= remaining
-        ]
-
-
-singleQuotes : Parser String
-singleQuotes =
-  succeed (String.replace "\\" "\\\\")
-    |. symbol "'"
-    |= characters ['\'']
-    |. symbol "'"
-    |. actualSpaces
-
-
-doubleQuotes : Parser String
-doubleQuotes =
-  succeed identity
-    |. symbol "\""
-    |= characters ['"']
-    |. symbol "\""
-    |. actualSpaces
-
-
-lineOfCharacters : Parser String
-lineOfCharacters =
-  succeed ()
-    |. chompIf (\c -> c /= '\n')
-    |. chompUntilEndOr "\n"
-    |> getChompedString
-
-
-apply : a -> (a -> b) -> b
-apply v f =
-  f v
-
-
-stringToValue : String -> Ast.Value
-stringToValue string =
-  case String.trim string of
-    "" -> Ast.Null_
-    other -> 
-      case String.toInt other of
-        Just int -> Ast.Int_ int
-        Nothing ->
-          case String.toFloat other of
-            Just float -> Ast.Float_ float
-            Nothing -> Ast.String_ other
