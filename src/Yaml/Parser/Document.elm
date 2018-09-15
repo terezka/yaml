@@ -37,6 +37,6 @@ ends : P.Parser (a -> a)
 ends =
   P.succeed identity
     |. U.whitespace
-    |. P.oneOf [ U.threeDots, U.whitespace ]
+    |. P.oneOf [ U.threeDots, P.succeed () ]
     |. U.whitespace
     |. P.end

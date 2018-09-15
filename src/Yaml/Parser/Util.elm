@@ -60,7 +60,7 @@ spaces =
   in
   P.succeed ()
     |. actualSpaces
-    |. P.oneOf [ comment, actualSpaces ]
+    |. P.oneOf [ comment, P.succeed () ]
     |. actualSpaces
   
 
@@ -69,7 +69,7 @@ whitespace : P.Parser ()
 whitespace =
   P.succeed ()
     |. P.spaces
-    |. P.oneOf [ comment, P.spaces ]
+    |. P.oneOf [ comment, P.succeed () ]
     |. P.spaces
 
 
@@ -81,7 +81,7 @@ newLines =
   in
   P.succeed ()
     |. actualNewLines
-    |. P.oneOf [ comment, actualNewLines ]
+    |. P.oneOf [ comment, P.succeed () ]
     |. actualNewLines
   
 
@@ -155,7 +155,6 @@ characters endings =
     |. P.oneOf 
         [ P.succeed () 
             |. comment
-            |. if List.member '\n' endings then P.succeed () else newLine
         , P.succeed () 
         ]
 

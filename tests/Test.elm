@@ -10,7 +10,7 @@ import Html
 
 main : Html.Html msg 
 main =
-  case Yaml.run randomTest of 
+  case Yaml.run testDocumentBegin of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -22,6 +22,8 @@ randomTest =
 [aaa
 bbb
 ccc # trash
+   
+   , hkjhkj
 ]
 
 ...
