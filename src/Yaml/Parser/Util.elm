@@ -161,7 +161,7 @@ remaining =
           , P.succeed identity |= lineOfCharacters
           ]
   in
-  P.loop ("","") each
+  P.loop ( "","" ) each
 
 
 anything : P.Parser String
