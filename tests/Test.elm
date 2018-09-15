@@ -6,7 +6,7 @@ import Html
 
 
 {- 
-
+-- TODO: Bools and Null string
 -}
 
 main : Html.Html msg 

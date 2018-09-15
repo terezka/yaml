@@ -52,7 +52,6 @@ value =
     , Yaml.Parser.List.inline { child = valueInline }
     , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
     , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) P.getCol
-    , Yaml.Parser.Null.inline
     , Yaml.Parser.String.toplevel
     ]
 

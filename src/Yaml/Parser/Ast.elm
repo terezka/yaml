@@ -25,8 +25,9 @@ type alias Property =
 {-| -}
 fromString : String -> Value
 fromString string =
-  case String.trim string of
+  case String.toLower (String.trim string) of
     "" -> Null_
+    "null" -> Null_
     other -> 
       case String.toInt other of
         Just int -> Int_ int
