@@ -141,6 +141,7 @@ toplevelMissingProperty value =
         Ast.List_ list -> "a list!"
         Ast.Int_ list -> "an int!"
         Ast.Float_ list -> "a float!"
+        Ast.Bool_ _ -> "a boolean!"
 
 
 

@@ -12,6 +12,7 @@ type Value
   | Int_ Int
   | List_ (List Value)
   | Record_ (List Property)
+  | Bool_ Bool
   | Null_
 
 
@@ -28,6 +29,8 @@ fromString string =
   case String.toLower (String.trim string) of
     "" -> Null_
     "null" -> Null_
+    "true" -> Bool_ True
+    "false" -> Bool_ False
     other -> 
       case String.toInt other of
         Just int -> Int_ int
@@ -60,6 +63,12 @@ toString value =
     
     Record_ properties ->
       "{ " ++ String.join ", " (List.map toStringProperty properties) ++ " }"
+
+    Bool_ True ->
+      "True (bool)"
+
+    Bool_ False ->
+      "False (bool)"
     
     Null_ ->
       "Null"
