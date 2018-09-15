@@ -38,4 +38,5 @@ ends =
   P.succeed identity
     |. U.whitespace
     |. P.oneOf [ U.threeDots, U.whitespace ]
+    |. U.whitespace
     |. P.end

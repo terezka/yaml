@@ -54,6 +54,7 @@ value =
     , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) U.nextIndent
     , Yaml.Parser.String.toplevel
     ]
+    |> P.map (Debug.log "value")
 
 
 valueToplevel : P.Parser Ast.Value

@@ -25,10 +25,8 @@ inline endings =
    P.oneOf
     [ P.succeed Ast.String_
         |= U.singleQuotes
-        |. U.anyOf endings
     , P.succeed Ast.String_
         |= U.doubleQuotes
-        |. U.anyOf endings
     , P.succeed Ast.fromString
         |= U.characters endings
     ]

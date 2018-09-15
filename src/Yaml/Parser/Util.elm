@@ -305,7 +305,6 @@ propertyName first =
           [ P.succeed (Ok name)
               |. colon
           , P.succeed (Err name)
-              |. spaces
               |. newLine
           , P.problem "I was trying to parse a quoted string, but there was an unexpected directly afterwards!"
           ]

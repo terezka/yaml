@@ -158,7 +158,7 @@ inline : Inline -> P.Parser Ast.Value
 inline config =
   P.succeed Ast.Record_
     |. P.symbol "{"
-    |. U.spaces
+    |. U.whitespace
     |= P.oneOf
         [ P.succeed [] |. P.symbol "}"
         , P.loop [] (inlineEach config)
@@ -173,11 +173,11 @@ inlineEach config properties =
         Ok validName ->
           P.succeed (\v next -> next (Ast.Property validName v :: properties))
             |= inlineValue config
+            |. U.whitespace
             |= P.oneOf
-                [ P.succeed P.Loop |. U.comma
-                , P.succeed (P.Done << List.reverse) |. P.symbol "}"
+                [ P.succeed P.Loop |. U.comma |. U.whitespace
+                , P.succeed (P.Done << List.reverse) |. P.symbol "}" |. U.spaces
                 ]
-            |. U.spaces
 
         Err _ -> 
           errorMissingColon
