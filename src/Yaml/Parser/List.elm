@@ -1,4 +1,4 @@
-module Yaml.Parser.List exposing (toplevel, inline)
+module Yaml.Parser.List exposing (Toplevel, toplevel, Inline, inline)
 
 
 import Parser as P exposing ((|=), (|.))
@@ -6,18 +6,15 @@ import Yaml.Parser.Util as U
 import Yaml.Parser.Ast as Ast
 
 
-type alias Config =
-  { inline : List Char -> P.Parser Ast.Value
-  , toplevel : P.Parser Ast.Value
-  }
-
-
-
 -- TOP LEVEL
 
 
+type alias Toplevel =
+  { child : P.Parser Ast.Value }
+
+
 {-| -}
-toplevel : Config -> Int -> P.Parser Ast.Value
+toplevel : Toplevel -> Int -> P.Parser Ast.Value
 toplevel config indent =
   let
     withValue value =
@@ -28,7 +25,7 @@ toplevel config indent =
     |> P.andThen withValue
 
 
-toplevelEach : Config -> Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+toplevelEach : Toplevel -> Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
 toplevelEach config indent values =
   let finish = P.Done (List.reverse values)
       next value = P.Loop (value :: values)
@@ -42,7 +39,7 @@ toplevelEach config indent values =
     }
 
 
-toplevelNewEntry : Config -> P.Parser Ast.Value
+toplevelNewEntry : Toplevel -> P.Parser Ast.Value
 toplevelNewEntry config =
   P.succeed identity
     |. U.dash
@@ -52,11 +49,11 @@ toplevelNewEntry config =
         , P.succeed identity
             |. U.space
             |. U.spaces
-            |= config.toplevel
+            |= config.child
         ]
 
 
-toplevelContinuedEntry : Config -> List Ast.Value -> Int -> P.Parser (List Ast.Value)
+toplevelContinuedEntry : Toplevel -> List Ast.Value -> Int -> P.Parser (List Ast.Value)
 toplevelContinuedEntry config values subIndent =
   let
     coalesce value =
@@ -73,14 +70,18 @@ toplevelContinuedEntry config values subIndent =
         ( _, _ ) -> 
           P.succeed (value :: values)
   in
-  P.andThen coalesce config.toplevel
+  P.andThen coalesce config.child
 
 
 
 -- INLINE
 
 
-inline : Config -> P.Parser Ast.Value
+type alias Inline =
+  { child : List Char -> P.Parser Ast.Value }
+
+
+inline : Inline -> P.Parser Ast.Value
 inline config =
   P.succeed Ast.List_
     |. P.symbol "["
@@ -92,10 +93,10 @@ inline config =
         ]
 
 
-inlineEach : Config -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+inlineEach : Inline -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
 inlineEach config values =
   P.succeed (\v next -> next (v :: values))
-    |= config.inline [',', ']']
+    |= config.child [',', ']']
     |. U.spaces
     |= P.oneOf
         [ P.succeed P.Loop |. P.symbol "," 

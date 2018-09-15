@@ -47,8 +47,8 @@ value : Int -> P.Parser Ast.Value
 value indent =
   P.oneOf
     [ Yaml.Parser.Record.inline { inline = valueInline }
-    , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
-    , Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel } indent
+    , Yaml.Parser.List.inline { child = valueInline }
+    , Yaml.Parser.List.toplevel { child = valueToplevel } indent
     , Yaml.Parser.Record.toplevel toplevelRecordConfig True indent
     , Yaml.Parser.Null.inline
     , Yaml.Parser.String.toplevel
@@ -60,7 +60,7 @@ valueInline endings =
   P.lazy <| \_ -> 
     P.oneOf
       [ Yaml.Parser.Record.inline { inline = valueInline }
-      , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+      , Yaml.Parser.List.inline { child = valueInline }
       , Yaml.Parser.String.inline endings
       ]
 
@@ -69,7 +69,7 @@ valueToplevelInline : P.Parser Ast.Value
 valueToplevelInline =
   P.lazy <| \_ -> 
     P.oneOf
-      [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+      [ Yaml.Parser.List.inline { child = valueInline }
       , Yaml.Parser.Record.inline { inline = valueInline }
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
@@ -80,18 +80,22 @@ valueToplevel : P.Parser Ast.Value
 valueToplevel =
   P.lazy <| \_ -> 
     P.oneOf
-      [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+      [ Yaml.Parser.List.inline { child = valueInline }
       , Yaml.Parser.Record.inline { inline = valueInline }
-      , P.andThen (Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }) P.getCol
+      , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
       , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) P.getCol
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
 
 
+
+-- CONFIGS
+
+
 toplevelRecordConfig : Yaml.Parser.Record.Toplevel
 toplevelRecordConfig =
   { inlineToplevel = valueToplevelInline
   , toplevel = valueToplevel
-  , list = Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }
+  , list = Yaml.Parser.List.toplevel { child = valueToplevel }
   }
