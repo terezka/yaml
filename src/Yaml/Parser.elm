@@ -1,4 +1,4 @@
-module Yaml.Parser exposing (Value(..), Property, parser)
+module Yaml.Parser exposing (Value(..), Property, parser, run)
 
 import Parser exposing (..)
 
@@ -26,6 +26,12 @@ type alias Property =
 
 
 -- PARSER
+
+
+{-| -}
+run : String -> Result (List Parser.DeadEnd) Value
+run =
+  Parser.run parser
 
 
 {-| -}
@@ -80,7 +86,7 @@ yamlValue indent =
     [ yamlRecordInline
     , yamlListInline
     , yamlList indent
-    , yamlRecord indent
+    , yamlRecord True indent
     , yamlNull
     , yamlString
     ]
@@ -118,22 +124,18 @@ yamlString =
         , succeed (Done (List.reverse result |> String.concat))
         ]
   in
-  succeed String_ 
-    |= oneOf
-        [ singleQuotes
-        , doubleQuotes
-        , loop [] multiline
-        ]        
+  oneOf
+    [ succeed String_
+        |= singleQuotes
+    , succeed String_
+        |= doubleQuotes
+    , succeed stringToValue
+        |= loop [] multiline
+    ]        
 
 
 yamlStringInline : List Char -> Parser Value
 yamlStringInline endings =
-  let
-    toValue string =
-      case string of
-        "" -> Null_
-        other -> String_ other
-  in
    oneOf
     [ succeed String_
         |= singleQuotes
@@ -141,9 +143,8 @@ yamlStringInline endings =
     , succeed String_
         |= doubleQuotes
         |. anyOf endings
-    , succeed String.trim
+    , succeed stringToValue
         |= characters endings
-        |> map toValue
     ]
 
 
@@ -202,7 +203,7 @@ yamlListContinuedEntry values subIndent =
           succeed (String_ (prev ++ " " ++ new) :: rest)
 
         ( _ :: rest, String_ _ ) -> -- TODO don't skip new lines
-          problem "Expected \"-\""
+          problem "I was parsing a record, but I got more strings when expected a new property!"
 
         ( _, _ ) -> 
           succeed (value :: values)
@@ -229,7 +230,7 @@ yamlListValue =
       [ yamlListInline
       , yamlRecordInline
       , andThen yamlList getCol
-      , andThen yamlRecord getCol
+      , andThen (yamlRecord False) getCol
       , yamlNull
       , succeed identity 
           |= yamlStringInline ['\n']
@@ -240,15 +241,15 @@ yamlListValue =
 -- YAML / RECORD
 
 
-yamlRecord : Int -> Parser Value
-yamlRecord indent =
+yamlRecord : Bool -> Int -> Parser Value
+yamlRecord first indent =
   let
     withProperty name =
       case name of 
         Ok validName -> yamlRecordConfirmed indent validName
         Err value -> succeed value
   in
-  propertyName |> andThen withProperty
+  propertyName first |> andThen withProperty
 
 
 yamlRecordConfirmed : Int -> String -> Parser Value
@@ -319,7 +320,7 @@ yamlRecordNewEntry =
         Err _ -> 
           yamlRecordMissingColon
   in
-  propertyName |> andThen withProperty
+  propertyName False |> andThen withProperty
 
 
 yamlRecordContinuedEntry : List Property -> Int -> Parser (List Property)
@@ -362,7 +363,7 @@ yamlRecordValue =
       [ yamlListInline
       , yamlRecordInline
       , andThen yamlList getCol
-      , andThen yamlRecord getCol
+      , andThen (yamlRecord False) getCol
       , yamlNull
       , succeed identity 
           |= yamlStringInline ['\n']
@@ -447,7 +448,7 @@ yamlRecordInlineEach properties =
         Err _ -> 
           errorMissingColon
   in
-  propertyName |> andThen withProperty
+  propertyName False |> andThen withProperty
 
 
 yamlRecordInlineValue : Parser Value
@@ -565,18 +566,19 @@ checkIndent indent next =
 -- PROPERTY NAME
 
 
-propertyName : Parser (Result Value String)
-propertyName =
+propertyName : Bool -> Parser (Result Value String)
+propertyName first =
   let remaining =
+        if first then everything else characters ['\n']
+
+      everything =
         succeed ()
           |. chompWhile (always True)
           |> getChompedString
 
       valid = Ok
       invalid s2 s1 = 
-        case s1 ++ s2 of
-          "" -> Err Null_
-          result -> Err (String_ (String.trim result))
+        Err (stringToValue (s1 ++ s2))
   in
   succeed apply
     |= oneOf
@@ -591,7 +593,7 @@ propertyName =
         [ succeed valid
             |. colon
         , succeed invalid
-            |= characters ['\n'] -- TODO remaining
+            |= remaining
         ]
 
 
@@ -624,3 +626,16 @@ lineOfCharacters =
 apply : a -> (a -> b) -> b
 apply v f =
   f v
+
+
+stringToValue : String -> Value
+stringToValue string =
+  case String.trim string of
+    "" -> Null_
+    other -> 
+      case String.toInt other of
+        Just int -> Int_ int
+        Nothing ->
+          case String.toFloat other of
+            Just float -> Float_ float
+            Nothing -> String_ other

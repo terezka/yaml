@@ -7,13 +7,11 @@ import Html
 
 {- 
 
-TODO:
-  - Numbers
 -}
 
 main : Html.Html msg 
 main =
-  case Parser.run Yaml.parser testDocumentBegin of 
+  case Parser.run Yaml.parser randomTest of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -21,10 +19,9 @@ main =
 randomTest : String
 randomTest =
   """
-- aaa:
-    "bbb": bbb
-    ccc: 'ccc'
-    
+  fdsfdf
+fdsfds
+
 """
 
 testDocumentBegin : String
