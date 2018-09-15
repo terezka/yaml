@@ -6,7 +6,6 @@ import Html
 
 
 {- 
-  bool in qoutes
 -}
 
 main : Html.Html msg 
