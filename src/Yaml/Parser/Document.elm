@@ -23,13 +23,14 @@ dashes indent =
     P.oneOf
       [ P.succeed identity
           |. U.threeDashes
-          |. P.oneOf [ U.space, U.newLine ]
+          |. U.whitespace
       , P.succeed identity
           |. U.whitespace
       ]
   else
     P.succeed identity
       |. U.whitespace
+
 
 {-| -}
 ends : P.Parser (a -> a)

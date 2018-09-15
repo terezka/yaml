@@ -80,6 +80,19 @@ anyOf endings =
   P.chompIf (\c -> List.member c endings)
 
 
+{-| -}
+end : P.Parser (a -> a)
+end =
+  P.oneOf
+    [ P.succeed identity
+        |. P.end
+    , P.succeed identity
+        |. threeDots
+        |. whitespace
+        |. P.end
+    ]
+
+
 
 -- STRINGS
 
@@ -212,7 +225,7 @@ checkIndent : Int -> { smaller : P.Parser a, exactly : P.Parser a, larger : Int 
 checkIndent indent next =
   let check actual =
         P.oneOf
-          [ P.andThen (always next.ending) P.end 
+          [ P.andThen (\_ -> next.ending) end
           , if actual == indent then next.exactly
             else if actual > indent then next.larger actual
             else next.smaller
@@ -230,8 +243,7 @@ checkIndent indent next =
 propertyName : Bool -> P.Parser (Result Ast.Value String)
 propertyName first =
   let valid = Ok
-      invalid s2 s1 = 
-        Err (Ast.fromString (s1 ++ s2))
+      invalid s2 s1 = Err (Ast.fromString (s1 ++ s2))
   in
   P.succeed apply
     |= P.oneOf
@@ -246,7 +258,9 @@ propertyName first =
         [ P.succeed valid
             |. colon
         , P.succeed invalid
-            |= if first then remaining else characters ['\n']
+            |= if first 
+                  then remaining 
+                  else characters ['\n']
         ]
 
 apply : a -> (a -> b) -> b

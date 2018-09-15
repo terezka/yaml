@@ -6,11 +6,12 @@ import Html
 
 
 {- 
+  bool in qoutes
 -}
 
 main : Html.Html msg 
 main =
-  case Yaml.run testDocumentBegin of 
+  case Yaml.run randomTest of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -18,11 +19,11 @@ main =
 randomTest : String
 randomTest =
   """
----
+--- 
 
+- "true"
 
 ...
-
 """
 
 testDocumentBegin : String
