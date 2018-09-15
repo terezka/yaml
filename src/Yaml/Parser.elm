@@ -5,6 +5,7 @@ import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Util as U
 import Yaml.Parser.Document
 import Yaml.Parser.String
+import Yaml.Parser.Record
 
 
 {-| -}
@@ -43,7 +44,7 @@ parser =
 yamlValue : Int -> Parser Ast.Value
 yamlValue indent =
   oneOf
-    [ yamlRecordInline
+    [ Yaml.Parser.Record.inline { child = yamlValueInline }
     , yamlListInline
     , yamlList indent
     , yamlRecord True indent
@@ -55,7 +56,7 @@ yamlValue indent =
 yamlValueInline : List Char -> Parser Ast.Value
 yamlValueInline endings =
   oneOf
-    [ yamlRecordInline
+    [ Yaml.Parser.Record.inline { child = yamlValueInline }
     , yamlListInline
     , Yaml.Parser.String.inline endings
     ]
@@ -139,10 +140,9 @@ yamlListValueInline =
   lazy <| \_ -> 
     oneOf
       [ yamlListInline
-      , yamlRecordInline
+      , Yaml.Parser.Record.inline { child = yamlValueInline }
       , yamlNull
-      , succeed identity 
-          |= Yaml.Parser.String.inline ['\n']
+      , Yaml.Parser.String.inline ['\n']
       ]
 
 
@@ -151,12 +151,11 @@ yamlListValue =
   lazy <| \_ -> 
     oneOf
       [ yamlListInline
-      , yamlRecordInline
+      , Yaml.Parser.Record.inline { child = yamlValueInline }
       , andThen yamlList getCol
       , andThen (yamlRecord False) getCol
       , yamlNull
-      , succeed identity 
-          |= Yaml.Parser.String.inline ['\n']
+      , Yaml.Parser.String.inline ['\n']
       ]
 
 
@@ -272,7 +271,7 @@ yamlRecordValueInline : Parser Ast.Value
 yamlRecordValueInline =
   oneOf
     [ yamlListInline
-    , yamlRecordInline
+    , Yaml.Parser.Record.inline { child = yamlValueInline }
     , yamlNull
     , succeed identity 
         |= Yaml.Parser.String.inline ['\n']
@@ -284,7 +283,7 @@ yamlRecordValue =
   lazy <| \_ -> 
     oneOf
       [ yamlListInline
-      , yamlRecordInline
+      , Yaml.Parser.Record.inline { child = yamlValueInline }
       , andThen yamlList getCol
       , andThen (yamlRecord False) getCol
       , yamlNull
@@ -337,65 +336,5 @@ yamlListInlineEach values =
         , succeed (Done << List.reverse) |. symbol "]"
         ]
     |. U.spaces
-
-
-
--- YAML / RECORD / INLINE
-
-
-yamlRecordInline : Parser Ast.Value
-yamlRecordInline =
-  succeed Ast.Record_
-    |. symbol "{"
-    |. U.spaces
-    |= oneOf
-        [ succeed [] |. symbol "}"
-        , loop [] yamlRecordInlineEach
-        ]
-
-
-yamlRecordInlineEach : List Ast.Property -> Parser (Step (List Ast.Property) (List Ast.Property))
-yamlRecordInlineEach properties =
-  let
-    withProperty name =
-      case name of 
-        Ok validName ->
-          succeed (\v next -> next (Ast.Property validName v :: properties))
-            |= yamlRecordInlineValue
-            |= oneOf
-                [ succeed Loop |. U.comma
-                , succeed (Done << List.reverse) |. symbol "}"
-                ]
-            |. U.spaces
-
-        Err _ -> 
-          errorMissingColon
-  in
-  U.propertyName False |> andThen withProperty
-
-
-yamlRecordInlineValue : Parser Ast.Value
-yamlRecordInlineValue =
-  oneOf
-    [ succeed identity
-        |. oneOf [ U.space, U.newLine ]
-        |. U.whitespace -- TODO ?
-        |= yamlValueInline [',', '}']
-        |. U.spaces
-    , succeed ()
-        |. chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
-        |> andThen (\_ -> errorMissingSpaceAfterColon)
-    , succeed Ast.Null_
-    ]
-
-
-errorMissingColon : Parser a 
-errorMissingColon =
-  problem "I was parsing an inline record, but I couldn't find the \":\"!"
-
-
-errorMissingSpaceAfterColon : Parser a 
-errorMissingSpaceAfterColon =
-  problem "I was parsing an inline record, but missing a space between the \":\" and the value!"
 
 

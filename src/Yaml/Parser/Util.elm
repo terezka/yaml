@@ -53,20 +53,6 @@ whitespace =
 
 
 {-| -}
-anyOf : List Char -> P.Parser ()
-anyOf endings =
-  P.chompIf (\c -> List.member c endings)
-
-
-{-| -}
-characters : List Char -> P.Parser String
-characters endings =
-  P.succeed ()
-    |. P.chompWhile (\c -> not (List.member c endings))
-    |> P.getChompedString
-
-
-{-| -}
 newLines : P.Parser ()
 newLines =
   P.chompWhile (\c -> c == '\n')
@@ -79,7 +65,25 @@ newLine =
 
 
 
+-- OTHER
+
+
+{-| -}
+anyOf : List Char -> P.Parser ()
+anyOf endings =
+  P.chompIf (\c -> List.member c endings)
+
+
+
 -- STRINGS
+
+
+{-| -}
+characters : List Char -> P.Parser String
+characters endings =
+  P.succeed ()
+    |. P.chompWhile (\c -> not (List.member c endings))
+    |> P.getChompedString
 
 
 {-| -}
