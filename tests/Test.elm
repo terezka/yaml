@@ -19,12 +19,13 @@ randomTest : String
 randomTest =
   """
 --- 
-
--
- - fdsfd
-  fdsfs
-
-...
+# trash
+- [3 # trash
+, 343
+] 
+- bbb
+# trash
+... # trash
 """
 
 testDocumentBegin : String

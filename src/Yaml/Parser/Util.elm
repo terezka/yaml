@@ -35,6 +35,12 @@ threeDashes =
 
 
 {-| -}
+hash : P.Parser ()
+hash =
+  P.symbol "#"
+
+
+{-| -}
 threeDots : P.Parser ()
 threeDots =
   P.symbol "..."
@@ -49,25 +55,48 @@ space =
 {-| -}
 spaces : P.Parser ()
 spaces =
-  P.chompWhile (\c -> c == ' ')
-
+  let actualSpaces = 
+        P.chompWhile (\c -> c == ' ')
+  in
+  P.succeed ()
+    |. actualSpaces
+    |. P.oneOf [ comment, actualSpaces ]
+    |. actualSpaces
+  
 
 {-| -}
 whitespace : P.Parser ()
 whitespace =
-  P.spaces
+  P.succeed ()
+    |. P.spaces
+    |. P.oneOf [ comment, P.spaces ] -- TODO
+    |. P.spaces
 
 
 {-| -}
 newLines : P.Parser ()
 newLines =
-  P.chompWhile (\c -> c == '\n')
-
+  let actualNewLines = 
+        P.chompWhile (\c -> c == '\n')
+  in
+  P.succeed ()
+    |. actualNewLines
+    |. P.oneOf [ comment, actualNewLines ]
+    |. actualNewLines
+  
 
 {-| -}
 newLine : P.Parser ()
 newLine =
   P.chompIf (\c -> c == '\n')
+
+
+{-| -}
+comment : P.Parser ()
+comment =
+  P.succeed ()
+    |. hash
+    |. P.chompUntilEndOr "\n"
 
 
 
@@ -106,11 +135,47 @@ character char =
 
 
 {-| -}
-characters : List Char -> P.Parser String
-characters endings =
+charactersAny : List Char -> P.Parser String
+charactersAny endings =
   P.succeed ()
     |. P.chompWhile (\c -> not (List.member c endings))
     |> P.getChompedString
+
+
+{-| -}
+characters : List Char -> P.Parser String
+characters endings =
+  let stringUntilComment = 
+        P.succeed ()
+          |. P.chompWhile (\c -> not (List.member c ('#' :: endings))) 
+          |> P.getChompedString
+  in
+  P.succeed identity
+    |= stringUntilComment
+    |. P.oneOf 
+        [ P.succeed () 
+            |. comment
+            |. if List.member '\n' endings then P.succeed () else newLine
+        , P.succeed () 
+        ]
+
+
+{-| -}
+lineOfCharacters : P.Parser String
+lineOfCharacters =
+  let stringUntilComment = 
+        P.succeed ()
+          |. P.chompIf (\c -> c /= '\n')
+          |. P.chompWhile (\c -> not (List.member c ['#', '\n'])) 
+          |> P.getChompedString
+  in
+  P.succeed identity
+    |= stringUntilComment
+    |. P.oneOf 
+        [ P.succeed () 
+            |. comment
+        , P.succeed () 
+        ]
 
 
 {-| -}
@@ -118,7 +183,7 @@ singleQuotes : P.Parser String
 singleQuotes =
   P.succeed (String.replace "\\" "\\\\")
     |. P.symbol "'"
-    |= characters ['\'']
+    |= charactersAny ['\'']
     |. P.symbol "'"
     |. spaces
 
@@ -128,18 +193,9 @@ doubleQuotes : P.Parser String
 doubleQuotes =
   P.succeed identity
     |. P.symbol "\""
-    |= characters ['"']
+    |= charactersAny ['"']
     |. P.symbol "\""
     |. spaces
-
-
-{-| -}
-lineOfCharacters : P.Parser String
-lineOfCharacters =
-  P.succeed ()
-    |. P.chompIf (\c -> c /= '\n')
-    |. P.chompUntilEndOr "\n"
-    |> P.getChompedString
 
 
 {-| -}
@@ -260,7 +316,7 @@ propertyName first =
               |. colon
           , P.succeed (Err << append name)
               |= if first 
-                    then remaining 
+                    then remaining
                     else characters ['\n']
           ]
   in
