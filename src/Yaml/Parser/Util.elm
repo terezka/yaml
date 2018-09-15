@@ -1,5 +1,5 @@
 module Yaml.Parser.Util exposing 
-  ( colon, comma, dash, space, spaces, newLine, newLines, whitespace
+  ( colon, comma, dash, threeDashes, space, spaces, newLine, newLines, whitespace
   , anyOf
   , singleQuotes, doubleQuotes, lineOfCharacters, characters
   , nextIndent, checkIndent
@@ -26,6 +26,12 @@ comma =
 dash : P.Parser ()
 dash =
   P.symbol "-"
+
+
+{-| -}
+threeDashes : P.Parser ()
+threeDashes =
+  P.symbol "---"
 
 
 {-| -}

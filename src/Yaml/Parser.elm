@@ -3,6 +3,7 @@ module Yaml.Parser exposing (Value, toString, parser, run)
 import Parser exposing (..)
 import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Util as U
+import Yaml.Parser.Document as Document
 
 
 {-| -}
@@ -30,42 +31,8 @@ run =
 parser : Parser Ast.Value
 parser =
   succeed identity
-    |= andThen yamlValue documentBegins
-    |. documentEnds
-
-
-
--- DOCUMENT / BEGINS
-
-
-documentBegins : Parser Int
-documentBegins =
-  succeed identity
-    |. spaces
-    |= oneOf 
-        [ succeed identity
-            |. threeDashesAndTrash 
-            |= U.nextIndent
-        , succeed identity
-            |= U.nextIndent
-        ]
-
-
-threeDashesAndTrash : Parser ()
-threeDashesAndTrash =
-  symbol "---"
-    |. chompUntilEndOr "\n"
-
-
-
--- DOCUMENT / ENDS
-
-
-documentEnds : Parser (a -> a)
-documentEnds =
-  succeed identity
-    |. U.whitespace
-    |. end
+    |= andThen yamlValue Document.begins -- TODO move get indent up to here
+    |. Document.ends
 
 
 
