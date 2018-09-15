@@ -6,22 +6,31 @@ import Yaml.Parser.Util as U
 
 
 {-| -}
-begins : P.Parser Int
+begins : P.Parser (a -> a)
 begins =
-  P.succeed identity
-    |. P.spaces
-    |= P.oneOf 
-        [ P.succeed identity
-            |. U.threeDashes 
-            |. P.chompUntilEndOr "\n"
-            |= U.nextIndent
-        , P.succeed identity
-            |= U.nextIndent
-        ]
+  P.oneOf
+    [ P.succeed identity
+        |. U.whitespace
+        |. P.andThen dashes U.nextIndent
+    , P.succeed identity
+        |. U.whitespace
+    ]
+
+
+dashes : Int -> P.Parser (a -> a)
+dashes indent =
+  if indent == 1 then
+    P.succeed identity
+      |. U.threeDashes
+      |. P.oneOf [ U.space, U.newLine ]
+  else
+    P.succeed identity
+      |. U.whitespace
 
 {-| -}
 ends : P.Parser (a -> a)
 ends =
   P.succeed identity
-    |. P.spaces
+    |. U.whitespace
+    |. P.oneOf [ U.threeDots, U.whitespace ]
     |. P.end

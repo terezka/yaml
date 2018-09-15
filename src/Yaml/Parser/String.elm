@@ -1,4 +1,4 @@
-module Yaml.Parser.String exposing (toplevel, inline)
+module Yaml.Parser.String exposing (toplevel, inline, exceptions)
 
 
 import Parser as P exposing ((|=), (|.))
@@ -9,20 +9,13 @@ import Yaml.Parser.Ast as Ast
 {-| -}
 toplevel : P.Parser Ast.Value
 toplevel =
-  let
-    multiline result =
-      P.oneOf
-        [ P.map (\i -> P.Loop (i :: result)) U.lineOfCharacters
-        , P.succeed (P.Done (List.reverse result |> String.concat))
-        ]
-  in
   P.oneOf
     [ P.succeed Ast.String_
         |= U.singleQuotes
     , P.succeed Ast.String_
         |= U.doubleQuotes
     , P.succeed Ast.fromString
-        |= P.loop [] multiline
+        |= U.remaining
     ]        
 
 
@@ -39,3 +32,13 @@ inline endings =
     , P.succeed Ast.fromString
         |= U.characters endings
     ]
+
+
+{-| -}
+exceptions : P.Parser Ast.Value
+exceptions =
+    let dashed s = "---" ++ s in
+    P.succeed (Ast.String_ << dashed)
+        |. U.threeDashes
+        |= U.remaining
+

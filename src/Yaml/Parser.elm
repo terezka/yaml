@@ -35,7 +35,8 @@ run =
 parser : P.Parser Ast.Value
 parser =
   P.succeed identity
-    |= P.andThen value Yaml.Parser.Document.begins -- TODO move get indent up to here
+    |. Yaml.Parser.Document.begins
+    |= value
     |. Yaml.Parser.Document.ends
 
 
@@ -43,13 +44,14 @@ parser =
 -- YAML / VALUE
 
 
-value : Int -> P.Parser Ast.Value
-value indent =
+value : P.Parser Ast.Value
+value =
   P.oneOf
-    [ Yaml.Parser.Record.inline { inline = valueInline }
+    [ Yaml.Parser.String.exceptions
+    , Yaml.Parser.Record.inline { inline = valueInline }
     , Yaml.Parser.List.inline { child = valueInline }
-    , Yaml.Parser.List.toplevel { child = valueToplevel } indent
-    , Yaml.Parser.Record.toplevel toplevelRecordConfig True indent
+    , P.andThen (Yaml.Parser.List.toplevel { child = valueToplevel }) P.getCol
+    , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig True) P.getCol
     , Yaml.Parser.Null.inline
     , Yaml.Parser.String.toplevel
     ]

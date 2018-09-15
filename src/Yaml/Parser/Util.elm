@@ -1,7 +1,7 @@
 module Yaml.Parser.Util exposing 
-  ( colon, comma, dash, threeDashes, space, spaces, newLine, newLines, whitespace
+  ( colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
   , anyOf
-  , singleQuotes, doubleQuotes, lineOfCharacters, characters
+  , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
   , nextIndent, checkIndent
   , propertyName
   )
@@ -32,6 +32,12 @@ dash =
 threeDashes : P.Parser ()
 threeDashes =
   P.symbol "---"
+
+
+{-| -}
+threeDots : P.Parser ()
+threeDots =
+  P.symbol "..."
 
 
 {-| -}
@@ -79,6 +85,14 @@ anyOf endings =
 
 
 {-| -}
+character : Char -> P.Parser String
+character char =
+  P.succeed identity
+    |. P.chompIf (\c -> c == char)
+    |> P.getChompedString
+
+
+{-| -}
 characters : List Char -> P.Parser String
 characters endings =
   P.succeed ()
@@ -113,6 +127,63 @@ lineOfCharacters =
     |. P.chompIf (\c -> c /= '\n')
     |. P.chompUntilEndOr "\n"
     |> P.getChompedString
+
+
+{-| -}
+remaining : P.Parser String
+remaining =
+  let
+    addString ( result, ending ) string =
+      if isThreeDots string then
+        let final = result ++ ending in
+        P.succeed (P.Done final) 
+          |. anything
+
+      else if isNewLine string then
+        let next = ( result, ending ++ string ) in
+        P.succeed (P.Loop next)
+
+      else if isJustSpaces string then
+        let next = ( result, ending ++ string ) in
+        P.succeed (P.Loop next) 
+          |. newLine
+
+      else
+        let next = ( result ++ ending ++ string, "" ) in
+        P.succeed (P.Loop next) 
+          |. newLine
+
+    each result =
+      P.andThen (addString result) <|
+        P.oneOf 
+          [ P.succeed "..." |. P.end 
+          , P.succeed identity |= character '\n'
+          , P.succeed identity |= lineOfCharacters
+          ]
+  in
+  P.loop ("","") each
+
+
+anything : P.Parser String
+anything =
+  P.succeed ()
+    |. P.chompWhile (always True)
+    |> P.getChompedString
+
+
+isThreeDots : String -> Bool
+isThreeDots s =
+  String.trimRight s == "..."
+
+
+isNewLine : String -> Bool
+isNewLine s =
+  String.replace " " "" s == "\n"
+
+
+isJustSpaces : String -> Bool
+isJustSpaces s =
+  String.isEmpty (String.replace " " "" s)
 
 
 
@@ -158,15 +229,7 @@ checkIndent indent next =
 {-| -}
 propertyName : Bool -> P.Parser (Result Ast.Value String)
 propertyName first =
-  let remaining =
-        if first then everything else characters ['\n']
-
-      everything =
-        P.succeed ()
-          |. P.chompWhile (always True)
-          |> P.getChompedString
-
-      valid = Ok
+  let valid = Ok
       invalid s2 s1 = 
         Err (Ast.fromString (s1 ++ s2))
   in
@@ -183,7 +246,7 @@ propertyName first =
         [ P.succeed valid
             |. colon
         , P.succeed invalid
-            |= remaining
+            |= if first then remaining else characters ['\n']
         ]
 
 apply : a -> (a -> b) -> b
