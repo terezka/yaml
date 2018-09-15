@@ -1,6 +1,6 @@
 module Yaml.Parser exposing (Value, toString, parser, run)
 
-import Parser exposing (..)
+import Parser as P exposing ((|=), (|.))
 import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Util as U
 import Yaml.Parser.Document
@@ -26,16 +26,16 @@ toString =
 
 
 {-| -}
-run : String -> Result (List Parser.DeadEnd) Ast.Value
+run : String -> Result (List P.DeadEnd) Ast.Value
 run =
-  Parser.run parser
+  P.run parser
 
 
 {-| -}
-parser : Parser Ast.Value
+parser : P.Parser Ast.Value
 parser =
-  succeed identity
-    |= andThen value Yaml.Parser.Document.begins -- TODO move get indent up to here
+  P.succeed identity
+    |= P.andThen value Yaml.Parser.Document.begins -- TODO move get indent up to here
     |. Yaml.Parser.Document.ends
 
 
@@ -43,9 +43,9 @@ parser =
 -- YAML / VALUE
 
 
-value : Int -> Parser Ast.Value
+value : Int -> P.Parser Ast.Value
 value indent =
-  oneOf
+  P.oneOf
     [ Yaml.Parser.Record.inline { inline = valueInline }
     , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
     , Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel } indent
@@ -55,20 +55,20 @@ value indent =
     ]
 
 
-valueInline : List Char -> Parser Ast.Value
+valueInline : List Char -> P.Parser Ast.Value
 valueInline endings =
-  lazy <| \_ -> 
-    oneOf
+  P.lazy <| \_ -> 
+    P.oneOf
       [ Yaml.Parser.Record.inline { inline = valueInline }
       , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
       , Yaml.Parser.String.inline endings
       ]
 
 
-valueToplevelInline : Parser Ast.Value
+valueToplevelInline : P.Parser Ast.Value
 valueToplevelInline =
-  lazy <| \_ -> 
-    oneOf
+  P.lazy <| \_ -> 
+    P.oneOf
       [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
       , Yaml.Parser.Record.inline { inline = valueInline }
       , Yaml.Parser.Null.inline
@@ -76,14 +76,14 @@ valueToplevelInline =
       ]
 
 
-valueToplevel : Parser Ast.Value
+valueToplevel : P.Parser Ast.Value
 valueToplevel =
-  lazy <| \_ -> 
-    oneOf
+  P.lazy <| \_ -> 
+    P.oneOf
       [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
       , Yaml.Parser.Record.inline { inline = valueInline }
-      , andThen (Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }) getCol
-      , andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) getCol
+      , P.andThen (Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }) P.getCol
+      , P.andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) P.getCol
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
