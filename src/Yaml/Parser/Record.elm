@@ -21,14 +21,14 @@ type alias Toplevel =
 
 {-| -}
 toplevel : Toplevel -> Bool -> Int -> P.Parser Ast.Value
-toplevel config first indent =
+toplevel config isFirstValue indent =
   let
     withProperty name =
       case name of 
         Ok validName -> toplevelConfirmed config indent validName
         Err value -> P.succeed value
   in
-  U.propertyName first 
+  U.propertyName isFirstValue 
     |> P.andThen withProperty
 
 
@@ -190,7 +190,7 @@ inlineValue config =
   P.oneOf
     [ P.succeed identity
         |. P.oneOf [ U.space, U.newLine ]
-        |. U.whitespace -- TODO ?
+        |. U.whitespace
         |= config.inline [',', '}']
         |. U.spaces
     , P.succeed ()
