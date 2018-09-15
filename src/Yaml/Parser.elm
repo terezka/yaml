@@ -35,7 +35,7 @@ run =
 parser : Parser Ast.Value
 parser =
   succeed identity
-    |= andThen yamlValue Yaml.Parser.Document.begins -- TODO move get indent up to here
+    |= andThen value Yaml.Parser.Document.begins -- TODO move get indent up to here
     |. Yaml.Parser.Document.ends
 
 
@@ -43,56 +43,55 @@ parser =
 -- YAML / VALUE
 
 
-yamlValue : Int -> Parser Ast.Value
-yamlValue indent =
+value : Int -> Parser Ast.Value
+value indent =
   oneOf
-    [ Yaml.Parser.Record.inline { inline = yamlValueInline }
-    , Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
-    , Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel } indent
-    , Yaml.Parser.Record.toplevel
-        { inlineToplevel = yamlValueToplevelInline
-        , toplevel = yamlValueToplevel
-        , list = Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel }
-        } True indent
+    [ Yaml.Parser.Record.inline { inline = valueInline }
+    , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+    , Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel } indent
+    , Yaml.Parser.Record.toplevel toplevelRecordConfig True indent
     , Yaml.Parser.Null.inline
     , Yaml.Parser.String.toplevel
     ]
 
 
-yamlValueInline : List Char -> Parser Ast.Value
-yamlValueInline endings =
+valueInline : List Char -> Parser Ast.Value
+valueInline endings =
   lazy <| \_ -> 
     oneOf
-      [ Yaml.Parser.Record.inline { inline = yamlValueInline }
-      , Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
+      [ Yaml.Parser.Record.inline { inline = valueInline }
+      , Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
       , Yaml.Parser.String.inline endings
       ]
 
 
-yamlValueToplevelInline : Parser Ast.Value
-yamlValueToplevelInline =
+valueToplevelInline : Parser Ast.Value
+valueToplevelInline =
   lazy <| \_ -> 
     oneOf
-      [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
-      , Yaml.Parser.Record.inline { inline = yamlValueInline }
+      [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+      , Yaml.Parser.Record.inline { inline = valueInline }
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
 
 
-yamlValueToplevel : Parser Ast.Value
-yamlValueToplevel =
+valueToplevel : Parser Ast.Value
+valueToplevel =
   lazy <| \_ -> 
     oneOf
-      [ Yaml.Parser.List.inline { inline = yamlValueInline, toplevel = yamlValueToplevel }
-      , Yaml.Parser.Record.inline { inline = yamlValueInline }
-      , andThen (Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel }) getCol
-      , andThen (Yaml.Parser.Record.toplevel
-                  { inlineToplevel = yamlValueToplevelInline
-                  , toplevel = yamlValueToplevel
-                  , list = Yaml.Parser.List.toplevel { inline = yamlValueInline, toplevel = yamlValueToplevel }
-                  } False) getCol
+      [ Yaml.Parser.List.inline { inline = valueInline, toplevel = valueToplevel }
+      , Yaml.Parser.Record.inline { inline = valueInline }
+      , andThen (Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }) getCol
+      , andThen (Yaml.Parser.Record.toplevel toplevelRecordConfig False) getCol
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
 
+
+toplevelRecordConfig : Yaml.Parser.Record.Toplevel
+toplevelRecordConfig =
+  { inlineToplevel = valueToplevelInline
+  , toplevel = valueToplevel
+  , list = Yaml.Parser.List.toplevel { inline = valueInline, toplevel = valueToplevel }
+  }

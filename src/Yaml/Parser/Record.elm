@@ -1,4 +1,4 @@
-module Yaml.Parser.Record exposing (toplevel, inline)
+module Yaml.Parser.Record exposing (Toplevel, toplevel, Inline, inline)
 
 
 import Parser as P exposing ((|=), (|.))
@@ -7,6 +7,10 @@ import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Null
 
 
+-- TOPLEVEL
+
+
+{-| -}
 type alias Toplevel =
   { inlineToplevel : P.Parser Ast.Value
   , toplevel : P.Parser Ast.Value
@@ -14,10 +18,7 @@ type alias Toplevel =
   }
 
 
-
--- TOPLEVEL
-
-
+{-| -}
 toplevel : Toplevel -> Bool -> Int -> P.Parser Ast.Value
 toplevel config first indent =
   let
@@ -145,6 +146,7 @@ toplevelMissingProperty value =
 -- INLINE
 
 
+{-| -}
 type alias Inline =
   { inline : List Char -> P.Parser Ast.Value  }
 
