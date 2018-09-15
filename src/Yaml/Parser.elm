@@ -6,6 +6,7 @@ import Yaml.Parser.Util as U
 import Yaml.Parser.Document
 import Yaml.Parser.String
 import Yaml.Parser.Record
+import Yaml.Parser.List
 
 
 {-| -}
@@ -45,7 +46,7 @@ yamlValue : Int -> Parser Ast.Value
 yamlValue indent =
   oneOf
     [ Yaml.Parser.Record.inline { child = yamlValueInline }
-    , yamlListInline
+    , Yaml.Parser.List.inline { child = yamlValueInline }
     , yamlList indent
     , yamlRecord True indent
     , yamlNull
@@ -57,7 +58,7 @@ yamlValueInline : List Char -> Parser Ast.Value
 yamlValueInline endings =
   oneOf
     [ Yaml.Parser.Record.inline { child = yamlValueInline }
-    , yamlListInline
+    , Yaml.Parser.List.inline { child = yamlValueInline }
     , Yaml.Parser.String.inline endings
     ]
 
@@ -139,7 +140,7 @@ yamlListValueInline : Parser Ast.Value
 yamlListValueInline =
   lazy <| \_ -> 
     oneOf
-      [ yamlListInline
+      [ Yaml.Parser.List.inline { child = yamlValueInline }
       , Yaml.Parser.Record.inline { child = yamlValueInline }
       , yamlNull
       , Yaml.Parser.String.inline ['\n']
@@ -150,7 +151,7 @@ yamlListValue : Parser Ast.Value
 yamlListValue =
   lazy <| \_ -> 
     oneOf
-      [ yamlListInline
+      [ Yaml.Parser.List.inline { child = yamlValueInline }
       , Yaml.Parser.Record.inline { child = yamlValueInline }
       , andThen yamlList getCol
       , andThen (yamlRecord False) getCol
@@ -270,7 +271,7 @@ yamlRecordContinuedEntry properties subIndent =
 yamlRecordValueInline : Parser Ast.Value
 yamlRecordValueInline =
   oneOf
-    [ yamlListInline
+    [ Yaml.Parser.List.inline { child = yamlValueInline }
     , Yaml.Parser.Record.inline { child = yamlValueInline }
     , yamlNull
     , succeed identity 
@@ -282,7 +283,7 @@ yamlRecordValue : Parser Ast.Value
 yamlRecordValue =
   lazy <| \_ -> 
     oneOf
-      [ yamlListInline
+      [ Yaml.Parser.List.inline { child = yamlValueInline }
       , Yaml.Parser.Record.inline { child = yamlValueInline }
       , andThen yamlList getCol
       , andThen (yamlRecord False) getCol
@@ -308,33 +309,5 @@ yamlRecordMissingProperty value =
         Ast.List_ list -> "a list!"
         Ast.Int_ list -> "an int!"
         Ast.Float_ list -> "a float!"
-
-
-
--- YAML / LIST / INLINE
-
-
-yamlListInline : Parser Ast.Value
-yamlListInline =
-  succeed Ast.List_
-    |. symbol "["
-    |. U.spaces
-    |= oneOf
-        [ succeed []
-            |. symbol "}"
-        , loop [] yamlListInlineEach
-        ]
-
-
-yamlListInlineEach : List Ast.Value -> Parser (Step (List Ast.Value) (List Ast.Value))
-yamlListInlineEach values =
-  succeed (\v next -> next (v :: values))
-    |= yamlValueInline [',', ']']
-    |. U.spaces
-    |= oneOf
-        [ succeed Loop |. symbol "," 
-        , succeed (Done << List.reverse) |. symbol "]"
-        ]
-    |. U.spaces
 
 
