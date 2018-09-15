@@ -95,7 +95,7 @@ valueToplevel =
 
 toplevelRecordConfig : Yaml.Parser.Record.Toplevel
 toplevelRecordConfig =
-  { inlineToplevel = valueToplevelInline
-  , toplevel = valueToplevel
+  { childInline = valueToplevelInline
+  , childToplevel = valueToplevel
   , list = Yaml.Parser.List.toplevel { child = valueToplevel }
   }

@@ -13,8 +13,8 @@ import Yaml.Parser.Null
 
 {-| -}
 type alias Toplevel =
-  { inlineToplevel : P.Parser Ast.Value
-  , toplevel : P.Parser Ast.Value
+  { childInline : P.Parser Ast.Value
+  , childToplevel : P.Parser Ast.Value
   , list : Int -> P.Parser Ast.Value
   }
 
@@ -39,7 +39,7 @@ toplevelConfirmed config indent name =
       P.succeed Ast.Record_
         |= P.loop [ Ast.Property name value ] (toplevelEach config indent)
   in
-  config.inlineToplevel
+  config.childInline
     |> P.andThen withValue
 
 
@@ -94,7 +94,7 @@ toplevelNewEntry config =
               , P.succeed identity
                   |. U.space
                   |. U.spaces
-                  |= config.inlineToplevel
+                  |= config.childInline
               ]
 
         Err _ -> 
@@ -122,7 +122,7 @@ toplevelContinuedEntry config properties subIndent =
         rest ->
           toplevelMissingProperty value
   in
-  P.andThen coalesce config.toplevel
+  P.andThen coalesce config.childToplevel
 
 
 toplevelMissingColon : P.Parser a
