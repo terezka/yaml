@@ -3,7 +3,8 @@ module Yaml.Parser exposing (Value, toString, parser, run)
 import Parser exposing (..)
 import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Util as U
-import Yaml.Parser.Document as Document
+import Yaml.Parser.Document
+import Yaml.Parser.String
 
 
 {-| -}
@@ -31,8 +32,8 @@ run =
 parser : Parser Ast.Value
 parser =
   succeed identity
-    |= andThen yamlValue Document.begins -- TODO move get indent up to here
-    |. Document.ends
+    |= andThen yamlValue Yaml.Parser.Document.begins -- TODO move get indent up to here
+    |. Yaml.Parser.Document.ends
 
 
 
@@ -47,7 +48,7 @@ yamlValue indent =
     , yamlList indent
     , yamlRecord True indent
     , yamlNull
-    , yamlString
+    , Yaml.Parser.String.toplevel
     ]
 
 
@@ -56,7 +57,7 @@ yamlValueInline endings =
   oneOf
     [ yamlRecordInline
     , yamlListInline
-    , yamlStringInline endings
+    , Yaml.Parser.String.inline endings
     ]
 
 
@@ -68,43 +69,6 @@ yamlNull : Parser Ast.Value
 yamlNull =
   succeed Ast.Null_
     |. U.newLine
-
-
-
--- YAML / STRING
-
-
-yamlString : Parser Ast.Value
-yamlString =
-  let
-    multiline result =
-      oneOf
-        [ map (\i -> Loop (i :: result)) U.lineOfCharacters
-        , succeed (Done (List.reverse result |> String.concat))
-        ]
-  in
-  oneOf
-    [ succeed Ast.String_
-        |= U.singleQuotes
-    , succeed Ast.String_
-        |= U.doubleQuotes
-    , succeed Ast.fromString
-        |= loop [] multiline
-    ]        
-
-
-yamlStringInline : List Char -> Parser Ast.Value
-yamlStringInline endings =
-   oneOf
-    [ succeed Ast.String_
-        |= U.singleQuotes
-        |. U.anyOf endings
-    , succeed Ast.String_
-        |= U.doubleQuotes
-        |. U.anyOf endings
-    , succeed Ast.fromString
-        |= U.characters endings
-    ]
 
 
 
@@ -178,7 +142,7 @@ yamlListValueInline =
       , yamlRecordInline
       , yamlNull
       , succeed identity 
-          |= yamlStringInline ['\n']
+          |= Yaml.Parser.String.inline ['\n']
       ]
 
 
@@ -192,7 +156,7 @@ yamlListValue =
       , andThen (yamlRecord False) getCol
       , yamlNull
       , succeed identity 
-          |= yamlStringInline ['\n']
+          |= Yaml.Parser.String.inline ['\n']
       ]
 
 
@@ -311,7 +275,7 @@ yamlRecordValueInline =
     , yamlRecordInline
     , yamlNull
     , succeed identity 
-        |= yamlStringInline ['\n']
+        |= Yaml.Parser.String.inline ['\n']
     ]
 
 
@@ -325,7 +289,7 @@ yamlRecordValue =
       , andThen (yamlRecord False) getCol
       , yamlNull
       , succeed identity 
-          |= yamlStringInline ['\n']
+          |= Yaml.Parser.String.inline ['\n']
       ]
 
 
