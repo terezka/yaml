@@ -39,7 +39,7 @@ toplevelConfirmed config indent name =
       P.succeed Ast.Record_
         |= P.loop [ Ast.Property name value ] (toplevelEach config indent)
   in
-  config.toplevel
+  config.inlineToplevel
     |> P.andThen withValue
 
 
@@ -94,7 +94,7 @@ toplevelNewEntry config =
               , P.succeed identity
                   |. U.space
                   |. U.spaces
-                  |= config.toplevel
+                  |= config.inlineToplevel
               ]
 
         Err _ -> 
