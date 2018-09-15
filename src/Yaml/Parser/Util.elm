@@ -242,27 +242,39 @@ checkIndent indent next =
 {-| -}
 propertyName : Bool -> P.Parser (Result Ast.Value String)
 propertyName first =
-  let valid = Ok
-      invalid s2 s1 = Err (Ast.fromString (s1 ++ s2))
-  in
-  P.succeed apply
-    |= P.oneOf
-        [ P.succeed identity
-            |= singleQuotes
-        , P.succeed identity
-            |= doubleQuotes
-        , P.succeed String.trim
-            |= characters [':', '\n']
-        ]
-    |= P.oneOf
-        [ P.succeed valid
-            |. colon
-        , P.succeed invalid
-            |= if first 
-                  then remaining 
-                  else characters ['\n']
-        ]
+  let append a b = a ++ b
 
-apply : a -> (a -> b) -> b
-apply v f =
-  f v
+      validateQuote name =
+        P.oneOf
+          [ P.succeed (Ok name)
+              |. colon
+          , P.succeed (Err name)
+              |. spaces
+              |. newLine
+          , P.problem "I was trying to parse a quoted string, but there was an unexpected directly afterwards!"
+          ]
+
+      validate name =
+        P.oneOf
+          [ P.succeed (Ok name)
+              |. colon
+          , P.succeed (Err << append name)
+              |= if first 
+                    then remaining 
+                    else characters ['\n']
+          ]
+  in
+  P.oneOf
+    [ P.succeed identity
+        |= singleQuotes
+        |> P.andThen validateQuote
+        |> P.map (Result.mapError Ast.String_)
+    , P.succeed identity
+        |= doubleQuotes
+        |> P.andThen validateQuote
+        |> P.map (Result.mapError Ast.String_)
+    , P.succeed String.trim
+        |= characters [':', '\n']
+        |> P.andThen validate
+        |> P.map (Result.mapError Ast.fromString)
+    ]
