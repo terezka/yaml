@@ -61,14 +61,11 @@ toplevelContinuedEntry config values subIndent =
         ( Ast.Null_ :: rest, _ ) -> 
           P.succeed (value :: rest)
 
-        ( Ast.String_ prev :: rest, Ast.String_ new ) -> 
+        ( Ast.String_ prev :: rest, Ast.String_ new ) -> -- TODO don't skip new lines
           P.succeed (Ast.String_ (prev ++ " " ++ new) :: rest)
 
-        ( _ :: rest, Ast.String_ _ ) -> -- TODO don't skip new lines
-          P.problem "I was parsing a record, but I got more strings when expected a new property!"
-
         ( _, _ ) -> 
-          P.succeed (value :: values)
+          P.problem "I was parsing a list, but I got something unexpected when expecting a new entry!"
   in
   P.andThen coalesce config.child
 
