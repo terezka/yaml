@@ -50,7 +50,7 @@ decoder =
 
 ```
 
-and run your decoder with `Yaml.Decode.fromString (Yaml.Decode.list decoder) yamlString`!
+and run your decoder with `Yaml.Decode.fromString (Yaml.Decode.list Woman.decoder) yamlString`!
 
 ## Work in progress
 
