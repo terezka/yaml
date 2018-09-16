@@ -83,14 +83,16 @@ view model =
               Yaml.Decode.Decoding string -> string
 
         Ok people ->
-          Html.div [] (List.map viewPerson people)
+          Html.div [] (List.map viewPerson (List.sortBy (.religion >> Maybe.withDefault "") people))
 
 
 viewPerson : Person -> Html.Html msg
 viewPerson person =
   Html.div [] 
-    [ Html.div [] [ Html.text ("Name: " ++ person.name) ] 
-    , Html.div [] [ Html.text ("Terms: " ++ String.join ", " person.terms) ]
+    [ -- Html.div [] [ Html.text ("Name: " ++ person.name) ] 
+    -- , 
+    Html.div [] [ Html.text ("Religion: " ++ Maybe.withDefault "unspecified" person.religion) ] 
+    -- , Html.div [] [ Html.text ("Terms: " ++ String.join ", " person.terms) ]
     ]
 
 
@@ -100,6 +102,7 @@ viewPerson person =
 
 type alias Person =
   { name : String
+  , religion : Maybe String
   , terms : List String 
   }
 
@@ -111,8 +114,9 @@ decoder =
 
 decodePerson : Yaml.Decode.Decoder Person
 decodePerson =
-  Yaml.Decode.map2 Person
+  Yaml.Decode.map3 Person
     (Yaml.Decode.at ["name", "last"] Yaml.Decode.string)
+    (Yaml.Decode.field "bio" (Yaml.Decode.sometimes (Yaml.Decode.field "religion" Yaml.Decode.string)))
     (Yaml.Decode.field "terms" (Yaml.Decode.list decodeTerm))
 
 

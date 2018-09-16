@@ -3,7 +3,7 @@ module Yaml.Decode exposing
   , string, bool, int, float
   , nullable, list
   , field, at
-  , Value, value, null, fail, succeed, andThen
+  , Value, value, sometimes, fail, succeed, andThen
   , map, map2, map3
   )
 
@@ -29,7 +29,7 @@ maybe be helpful.
 @docs map, map2, map3 
 
 # Special
-@docs Value, value, null, fail, succeed, andThen
+@docs Value, value, sometimes, fail, succeed, andThen
 
 
 -}
@@ -174,14 +174,13 @@ value =
     Ok v
 
 
-{-| Decode a `null` value into some Elm value.
--}
-null : a -> Decoder a
-null default =
+{-| -} -- TODO
+sometimes : Decoder a -> Decoder (Maybe a)
+sometimes decoder =
   Decoder <| \v ->
-    case v of
-      Ast.Null_ -> Ok default
-      _ -> Err (Decoding "Expected null")
+    case fromValue decoder v of
+      Ok a -> Ok (Just a)
+      Err _ -> Ok Nothing
 
 
 {-| Ignore the YAML and produce a certain Elm value.
