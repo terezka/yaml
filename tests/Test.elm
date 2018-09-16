@@ -8,7 +8,7 @@ import Html
 {- -}
 main : Html.Html msg 
 main =
-  case Yaml.run testDocumentBegin of 
+  case Yaml.fromString randomTest of 
     Ok value -> yamlValueToHtml value
     Err error -> Html.text (String.join ", " (List.map errorToString error))
 
@@ -16,15 +16,23 @@ main =
 randomTest : String
 randomTest =
   """
---- 
-[aaa
-bbb
-ccc # trash
-   
-   , hkjhkj
-]
-
-...
+---
+- name:
+    first: Marie
+    last: Curie
+  occupation: [ chemist, physicist ]
+  nationality: Polish
+- name:
+    first: Alva
+    last: Myrdal
+  occupation: [ sociologist, diplomat, politician ]
+  nationality: Swedish
+- name:
+    first: Svetlana
+    last: Alexievich
+  occupation: [ journalist, historian ]
+  nationality: Belarusian
+...  
 """
 
 testDocumentBegin : String

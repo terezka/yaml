@@ -36,6 +36,7 @@ maybe be helpful.
 
 import Yaml.Parser as Yaml
 import Yaml.Parser.Ast as Ast
+import Dict
 
 
 {-| A value that knows how to decode YAML values.
@@ -404,21 +405,13 @@ singleResult =
 
 find : List String -> Decoder a -> Ast.Value -> Result Error a
 find names decoder v0 =
-  let
-    findOne name properties =
-      properties
-        |> List.filter (\p -> p.name == name)
-        |> List.head
-        |> Maybe.map (Ok << .value)
-        |> Maybe.withDefault (Err (Decoding <| "Expected property: " ++ name))
-  in
   case names of 
     name :: rest -> 
       case v0 of
         Ast.Record_ properties -> 
-          case findOne name properties of
-            Ok v1 -> find rest decoder v1
-            Err err -> Err err
+          case Dict.get name properties of
+            Just v1 -> find rest decoder v1
+            Nothing -> Err (Decoding <| "Expected property: " ++ name)
 
         _ -> 
           Err (Decoding "Expected record")

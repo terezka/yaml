@@ -5,7 +5,7 @@ import Parser as P exposing ((|=), (|.))
 import Yaml.Parser.Util as U
 import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Null
-
+import Dict
 
 
 -- TOPLEVEL
@@ -36,8 +36,8 @@ toplevelConfirmed : Toplevel -> Int -> String -> P.Parser Ast.Value
 toplevelConfirmed config indent name =
   let
     withValue value =
-      P.succeed Ast.Record_
-        |= P.loop [ Ast.Property name value ] (toplevelEach config indent)
+      P.succeed (Ast.Record_ << Dict.fromList)
+        |= P.loop [ Tuple.pair name value ] (toplevelEach config indent)
   in
   config.childInline
     |> P.andThen withValue
@@ -55,9 +55,9 @@ toplevelEach config indent properties =
           , P.succeed finish 
           ]
 
-      toplevelNextOrList latest rest =
+      toplevelNextOrList ( name, _ ) rest =
         P.oneOf 
-          [ P.map (\list -> continued ({ latest | value = list } :: rest)) (config.list indent)
+          [ P.map (\list -> continued (( name, list ) :: rest)) (config.list indent)
           , P.map next (toplevelNewEntry config)
           , P.succeed finish 
           ]
@@ -66,11 +66,11 @@ toplevelEach config indent properties =
     { smaller = P.succeed finish
     , exactly = 
         case properties of 
-          latest :: rest ->
-            case latest.value of
+          ( name, value ) :: rest ->
+            case value of
               Ast.Null_ ->
                 -- Lists are allowed on the same level as the record
-                toplevelNextOrList latest rest
+                toplevelNextOrList ( name, value ) rest
                 
               _ ->
                 toplevelNext
@@ -88,7 +88,7 @@ toplevelNewEntry config =
     withProperty name =
       case name of 
         Ok validName ->
-          P.map (Ast.Property validName) <|
+          P.map (Tuple.pair validName) <|
             P.oneOf 
               [ Yaml.Parser.Null.inline
               , P.succeed identity
@@ -106,21 +106,21 @@ toplevelNewEntry config =
 toplevelContinuedEntry : Toplevel -> List Ast.Property -> Int -> P.Parser (List Ast.Property)
 toplevelContinuedEntry config properties subIndent =
   let
-    coalesce value =
+    coalesce new =
       case properties of
-        latest :: rest ->
-          case ( latest.value, value ) of
+        ( name, value ) :: rest ->
+          case ( value, new ) of
             ( Ast.Null_, _ ) -> 
-              P.succeed ({ latest | value = value } :: rest)
+              P.succeed (( name, new ) :: rest)
 
-            ( Ast.String_ prev, Ast.String_ new ) -> -- TODO don't skip new lines
-              P.succeed ({ latest | value = Ast.String_ (prev ++ " " ++ new) } :: rest)
+            ( Ast.String_ prev, Ast.String_ string ) -> -- TODO don't skip new lines
+              P.succeed (( name, Ast.String_ (prev ++ " " ++ string) ) :: rest)
 
             ( _, _ ) ->
-              toplevelMissingProperty value
+              toplevelMissingProperty new
 
         rest ->
-          toplevelMissingProperty value
+          toplevelMissingProperty new
   in
   P.andThen coalesce config.childToplevel
 
@@ -156,7 +156,7 @@ type alias Inline =
 {-| -}
 inline : Inline -> P.Parser Ast.Value
 inline config =
-  P.succeed Ast.Record_
+  P.succeed (Ast.Record_ << Dict.fromList)
     |. P.symbol "{"
     |. U.whitespace
     |= P.oneOf
@@ -171,7 +171,7 @@ inlineEach config properties =
     withProperty name =
       case name of 
         Ok validName ->
-          P.succeed (\v next -> next (Ast.Property validName v :: properties))
+          P.succeed (\v next -> next (Tuple.pair validName v :: properties))
             |= inlineValue config
             |. U.whitespace
             |= P.oneOf

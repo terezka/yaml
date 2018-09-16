@@ -1,6 +1,8 @@
 module Yaml.Parser.Ast exposing (Value(..), Property, toString, fromString)
 
 
+import Dict
+
 
 -- AST
 
@@ -11,16 +13,14 @@ type Value
   | Float_ Float
   | Int_ Int
   | List_ (List Value)
-  | Record_ (List Property)
+  | Record_ (Dict.Dict String Value)
   | Bool_ Bool
   | Null_
 
 
 {-| -}
 type alias Property =
-  { name : String 
-  , value : Value 
-  }
+  ( String, Value )
 
 
 {-| -}
@@ -62,7 +62,7 @@ toString value =
       "[ " ++ String.join ", " (List.map toString list) ++ " ]"
     
     Record_ properties ->
-      "{ " ++ String.join ", " (List.map toStringProperty properties) ++ " }"
+      "{ " ++ String.join ", " (List.map toStringProperty (Dict.toList properties)) ++ " }"
 
     Bool_ True ->
       "True (bool)"
@@ -75,5 +75,5 @@ toString value =
 
 
 toStringProperty : Property -> String
-toStringProperty { name, value } =
+toStringProperty ( name, value ) =
   name ++ ": " ++ toString value
