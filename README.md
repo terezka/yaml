@@ -29,7 +29,7 @@ Say you have some YAML which looks like this:
 to decode this, you could write
 
 ```elm
-module Woman exposing (decoder)
+module Woman exposing (Woman, decoder)
 
 import Yaml.Decode
 
