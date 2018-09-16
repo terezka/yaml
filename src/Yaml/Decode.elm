@@ -3,7 +3,7 @@ module Yaml.Decode exposing
   , string, bool, int, float
   , nullable, list
   , field, at
-  , Value, value, null, fail, succeed
+  , Value, value, null, fail, succeed, andThen
   , map, map2, map3
   )
 
@@ -29,7 +29,7 @@ maybe be helpful.
 @docs map, map2, map3 
 
 # Special
-@docs Value, value, null, fail, succeed
+@docs Value, value, null, fail, succeed, andThen
 
 
 -}
