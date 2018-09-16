@@ -174,7 +174,10 @@ value =
     Ok v
 
 
-{-| -} -- TODO
+{-| A decoder which returns `Nothing` when it fails.
+
+Note: This is equivalent to `maybe` from `Json.Decode`.
+-}
 sometimes : Decoder a -> Decoder (Maybe a)
 sometimes decoder =
   Decoder <| \v ->
