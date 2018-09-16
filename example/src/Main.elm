@@ -83,7 +83,7 @@ view model =
               Yaml.Decode.Decoding string -> string
 
         Ok people ->
-          Html.div [] (List.map viewPerson (List.sortBy (.religion >> Maybe.withDefault "") people))
+          Html.div [] (List.map viewPerson (List.sortBy (.religion >> Maybe.withDefault "z") people))
 
 
 viewPerson : Person -> Html.Html msg

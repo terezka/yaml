@@ -4,7 +4,7 @@ module Yaml.Decode exposing
   , nullable, list
   , field, at
   , Value, value, sometimes, fail, succeed, andThen
-  , map, map2, map3
+  , map, map2, map3, map4, map5, map6, map7, map8
   )
 
 {-|
@@ -26,7 +26,7 @@ maybe be helpful.
 @docs field, at
 
 # Maps
-@docs map, map2, map3 
+@docs map, map2, map3, map4, map5, map6, map7, map8
 
 # Special
 @docs Value, value, sometimes, fail, succeed, andThen
@@ -224,29 +224,29 @@ andThen next decoder =
 {-| Transform a decoder.
 -}
 map : (a -> b) -> Decoder a -> Decoder b
-map f (Decoder a) =
+map func (Decoder a) =
   Decoder <| \v0 ->
     case a v0 of
       Err err -> Err err
-      Ok av -> Ok (f av)
+      Ok av -> Ok (func av)
 
 {-| Try two decoders and then combine the result.
 -}
 map2 : (a -> b -> c) -> Decoder a -> Decoder b -> Decoder c
-map2 f (Decoder a) (Decoder b) =
+map2 func (Decoder a) (Decoder b) =
   Decoder <| \v0 ->
     case a v0 of
       Err err1 -> Err err1
       Ok av -> 
         case b v0 of
           Err err2 -> Err err2
-          Ok bv -> Ok (f av bv)
+          Ok bv -> Ok (func av bv)
 
 
 {-| Try three decoders and then combine the result.
 -}
 map3 : (a -> b -> c -> d) -> Decoder a -> Decoder b -> Decoder c -> Decoder d
-map3 f (Decoder a) (Decoder b) (Decoder c) =
+map3 func (Decoder a) (Decoder b) (Decoder c) =
   Decoder <| \v0 ->
     case a v0 of
       Err err1 -> Err err1
@@ -256,7 +256,132 @@ map3 f (Decoder a) (Decoder b) (Decoder c) =
           Ok bv ->
             case c v0 of
               Err err3 -> Err err3
-              Ok cv -> Ok (f av bv cv)
+              Ok cv -> Ok (func av bv cv)
+
+
+{-| Try four decoders and then combine the result.
+-}
+map4 : (a -> b -> c -> d -> e) -> Decoder a -> Decoder b -> Decoder c -> Decoder d -> Decoder e
+map4 func (Decoder a) (Decoder b) (Decoder c) (Decoder d) =
+  Decoder <| \v0 ->
+    case a v0 of
+      Err err1 -> Err err1
+      Ok av -> 
+        case b v0 of
+          Err err2 -> Err err2
+          Ok bv ->
+            case c v0 of
+              Err err3 -> Err err3
+              Ok cv -> 
+                case d v0 of
+                  Err err4 -> Err err4
+                  Ok dv -> Ok (func av bv cv dv)
+
+
+{-| Try five decoders and then combine the result.
+-}
+map5 : (a -> b -> c -> d -> e -> f) -> Decoder a -> Decoder b -> Decoder c -> Decoder d -> Decoder e -> Decoder f
+map5 func (Decoder a) (Decoder b) (Decoder c) (Decoder d) (Decoder e) =
+  Decoder <| \v0 ->
+    case a v0 of
+      Err err1 -> Err err1
+      Ok av -> 
+        case b v0 of
+          Err err2 -> Err err2
+          Ok bv ->
+            case c v0 of
+              Err err3 -> Err err3
+              Ok cv -> 
+                case d v0 of
+                  Err err4 -> Err err4
+                  Ok dv ->
+                    case e v0 of
+                      Err err5 -> Err err5
+                      Ok ev -> Ok (func av bv cv dv ev)
+
+
+{-| Try six decoders and then combine the result.
+-}
+map6 : (a -> b -> c -> d -> e -> f -> g) -> Decoder a -> Decoder b -> Decoder c -> Decoder d -> Decoder e -> Decoder f -> Decoder g
+map6 func (Decoder a) (Decoder b) (Decoder c) (Decoder d) (Decoder e) (Decoder f) =
+  Decoder <| \v0 ->
+    case a v0 of
+      Err err1 -> Err err1
+      Ok av -> 
+        case b v0 of
+          Err err2 -> Err err2
+          Ok bv ->
+            case c v0 of
+              Err err3 -> Err err3
+              Ok cv -> 
+                case d v0 of
+                  Err err4 -> Err err4
+                  Ok dv ->
+                    case e v0 of
+                      Err err5 -> Err err5
+                      Ok ev ->
+                        case f v0 of
+                          Err err6 -> Err err6
+                          Ok fv -> Ok (func av bv cv dv ev fv)
+
+
+{-| Try seven decoders and then combine the result.
+-}
+map7 : (a -> b -> c -> d -> e -> f -> g -> h) -> Decoder a -> Decoder b -> Decoder c -> Decoder d -> Decoder e -> Decoder f -> Decoder g -> Decoder h
+map7 func (Decoder a) (Decoder b) (Decoder c) (Decoder d) (Decoder e) (Decoder f) (Decoder g) =
+  Decoder <| \v0 ->
+    case a v0 of
+      Err err1 -> Err err1
+      Ok av -> 
+        case b v0 of
+          Err err2 -> Err err2
+          Ok bv ->
+            case c v0 of
+              Err err3 -> Err err3
+              Ok cv -> 
+                case d v0 of
+                  Err err4 -> Err err4
+                  Ok dv ->
+                    case e v0 of
+                      Err err5 -> Err err5
+                      Ok ev ->
+                        case f v0 of
+                          Err err6 -> Err err6
+                          Ok fv ->
+                            case g v0 of
+                              Err err7 -> Err err7
+                              Ok gv -> Ok (func av bv cv dv ev fv gv)
+
+
+{-| Try seven decoders and then combine the result.
+-}
+map8 : (a -> b -> c -> d -> e -> f -> g -> h -> i) -> Decoder a -> Decoder b -> Decoder c -> Decoder d -> Decoder e -> Decoder f -> Decoder g -> Decoder h -> Decoder i
+map8 func (Decoder a) (Decoder b) (Decoder c) (Decoder d) (Decoder e) (Decoder f) (Decoder g) (Decoder h) =
+  Decoder <| \v0 ->
+    case a v0 of
+      Err err1 -> Err err1
+      Ok av -> 
+        case b v0 of
+          Err err2 -> Err err2
+          Ok bv ->
+            case c v0 of
+              Err err3 -> Err err3
+              Ok cv -> 
+                case d v0 of
+                  Err err4 -> Err err4
+                  Ok dv ->
+                    case e v0 of
+                      Err err5 -> Err err5
+                      Ok ev ->
+                        case f v0 of
+                          Err err6 -> Err err6
+                          Ok fv ->
+                            case g v0 of
+                              Err err7 -> Err err7
+                              Ok gv ->
+                                case h v0 of
+                                  Err err8 -> Err err8
+                                  Ok hv -> Ok (func av bv cv dv ev fv gv hv)
 
 
 
