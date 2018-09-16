@@ -4,6 +4,7 @@ module Main exposing (main)
 import Browser
 import Html
 import Yaml.Parser
+import Yaml.Decode
 import Http
 import Parser
 
@@ -18,12 +19,12 @@ main =
 
 
 type alias Model =
-  Maybe (Result Issue Yaml.Parser.Value)
+  Maybe (Result Issue (List Person))
 
 
 type Issue
-  = HttpError Http.Error
-  | ParserError (List Parser.DeadEnd)
+  = Fetching Http.Error
+  | Decoding Yaml.Decode.Error
 
 
 init : () -> ( Model, Cmd Msg )
@@ -39,15 +40,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     ReceiveYaml (Ok string) ->
-      case Yaml.Parser.run string of
+      case Yaml.Decode.fromString decoder string of
         Ok value ->
           ( Just (Ok value), Cmd.none )
 
-        Err errors ->
-          ( Just (Err (ParserError errors)), Cmd.none )
+        Err error ->
+          ( Just (Err (Decoding error)), Cmd.none )
 
     ReceiveYaml (Err error) ->
-      ( Just (Err (HttpError error)), Cmd.none )
+      ( Just (Err (Fetching error)), Cmd.none )
 
 
 fetchYaml : Cmd Msg
@@ -66,7 +67,7 @@ view model =
 
     Just result ->
       case result of 
-        Err (HttpError error) ->
+        Err (Fetching error) ->
           Html.text <|
             case error of
               Http.BadUrl url -> "Bad url: " ++ url
@@ -75,13 +76,48 @@ view model =
               Http.BadStatus _ -> "BadStatus"
               Http.BadPayload _ _ -> "BadPayload"
 
-        Err (ParserError parserError) ->
-          Html.text "parserError"
+        Err (Decoding error) ->
+          Html.text <|
+            case error of
+              Yaml.Decode.Parsing string -> string
+              Yaml.Decode.Decoding string -> string
 
-        Ok value ->
-          yamlValueToHtml value
+        Ok people ->
+          Html.div [] (List.map viewPerson people)
 
 
-yamlValueToHtml : Yaml.Parser.Value -> Html.Html msg
-yamlValueToHtml value =
-  Html.text (Yaml.Parser.toString value)
+viewPerson : Person -> Html.Html msg
+viewPerson person =
+  Html.div [] 
+    [ Html.div [] [ Html.text ("Name: " ++ person.name) ] 
+    , Html.div [] [ Html.text ("Terms: " ++ String.join ", " person.terms) ]
+    ]
+
+
+
+-- DECODER 
+
+
+type alias Person =
+  { name : String
+  , terms : List String 
+  }
+
+
+decoder : Yaml.Decode.Decoder (List Person)
+decoder =
+  Yaml.Decode.list decodePerson
+
+
+decodePerson : Yaml.Decode.Decoder Person
+decodePerson =
+  Yaml.Decode.map2 Person
+    (Yaml.Decode.at ["name", "last"] Yaml.Decode.string)
+    (Yaml.Decode.field "terms" (Yaml.Decode.list decodeTerm))
+
+
+decodeTerm : Yaml.Decode.Decoder String
+decodeTerm =
+  Yaml.Decode.field "start" Yaml.Decode.string
+
+

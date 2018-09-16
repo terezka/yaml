@@ -1,4 +1,4 @@
-module Yaml.Parser exposing (Value, toString, parser, run)
+module Yaml.Parser exposing (Value, toString, parser, fromString)
 
 import Parser as P exposing ((|=), (|.))
 import Yaml.Parser.Ast as Ast
@@ -26,8 +26,8 @@ toString =
 
 
 {-| -}
-run : String -> Result (List P.DeadEnd) Ast.Value
-run =
+fromString : String -> Result (List P.DeadEnd) Ast.Value
+fromString =
   P.run parser
 
 

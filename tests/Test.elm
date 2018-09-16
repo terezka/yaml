@@ -5,9 +5,7 @@ import Yaml.Parser as Yaml
 import Html
 
 
-{- 
--}
-
+{- -}
 main : Html.Html msg 
 main =
   case Yaml.run testDocumentBegin of 
