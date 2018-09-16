@@ -2,7 +2,7 @@
 
 This package helps you convert between Elm values and YAML values.
 
-# Example
+## Example
 
 Say you have some YAML which looks like this:
 
@@ -52,6 +52,6 @@ decoder =
 
 and run your decoder with `Yaml.Decode.fromString (Yaml.Decode.list decoder) yamlString`!
 
-# Work in progress
+## Work in progress
 
 This package was build to be able to parse data like [this](https://github.com/unitedstates/congress-legislators/blob/master/legislators-current.yaml), and even if it has a few more features (multiline strings, comments) than necessary to parse that file, YAML is a large and complex format, and this parser is still missing a lot of YAML features like references and various logical operations. It is also missing `Yaml.Encode`!
