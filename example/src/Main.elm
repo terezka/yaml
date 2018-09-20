@@ -116,8 +116,14 @@ decodePerson : Yaml.Decode.Decoder Person
 decodePerson =
   Yaml.Decode.map3 Person
     (Yaml.Decode.at ["name", "last"] Yaml.Decode.string)
-    (Yaml.Decode.field "bio" (Yaml.Decode.sometimes (Yaml.Decode.field "religion" Yaml.Decode.string)))
+    (Yaml.Decode.field "bio" decodeBio)
     (Yaml.Decode.field "terms" (Yaml.Decode.list decodeTerm))
+
+
+decodeBio : Yaml.Decode.Decoder String
+decodeBio =
+  Yaml.Decode.sometimes <|
+    Yaml.Decode.field "religion" Yaml.Decode.string
 
 
 decodeTerm : Yaml.Decode.Decoder String

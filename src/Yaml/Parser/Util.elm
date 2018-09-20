@@ -305,7 +305,9 @@ propertyName first =
               |. colon
           , P.succeed (Err name)
               |. newLine
-          , P.problem "I was trying to parse a quoted string, but there was an unexpected directly afterwards!"
+          , P.succeed (Err name)
+              |. end
+          , P.problem "I was trying to parse a quoted string, but there was an unexpected _ directly afterwards!"
           ]
 
       validate name =
