@@ -93,6 +93,48 @@ if you have the answers, call me
         \_ -> 
           expectValue "{bbb: bbb, aaa: {bbb: bbb, aaa: aaa, ccc: ccc}, ccc: ccc}" <|
             Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a list" <|
+        \_ -> 
+          expectValue """
+- aaa
+- bbb
+- ccc
+
+""" <|
+            Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]
+      , Test.test "a list with a list inside" <|
+        \_ -> 
+          expectValue """
+- aaa
+-
+  - aaa
+  - bbb
+  - ccc
+- ccc
+
+""" <|
+            Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
+      , Test.test "a record" <|
+        \_ -> 
+          expectValue """
+aaa: aaa
+bbb: bbb
+ccc: ccc
+
+""" <|
+            Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a record with a record inside" <|
+        \_ -> 
+          expectValue """
+aaa: aaa
+bbb:
+  aaa: aaa
+  bbb: bbb
+  ccc: ccc
+ccc: ccc
+
+""" <|
+            Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
     ]
 
 
