@@ -2,6 +2,7 @@ module Yaml.Parser.Util exposing
   ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine_, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
   , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
   , anyOf
+  , Branch, fork
   , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
   , nextIndent, checkIndent
   , propertyName
@@ -299,36 +300,11 @@ doubleQuotes =
 {-| -}
 remaining : P.Parser String
 remaining =
-  let
-    addString ( result, ending ) string =
-      if isThreeDots string then
-        let final = result ++ ending in
-        P.succeed (P.Done final) 
-          |. anything
-
-      else if isNewLine string then
-        let next = ( result, ending ++ string ) in
-        P.succeed (P.Loop next)
-
-      else if isJustSpaces string then
-        let next = ( result, ending ++ string ) in
-        P.succeed (P.Loop next) 
-          |. newLine
-
-      else
-        let next = ( result ++ ending ++ string, "" ) in
-        P.succeed (P.Loop next) 
-          |. newLine
-
-    each result =
-      P.andThen (addString result) <|
-        P.oneOf 
-          [ P.succeed "..." |. P.end 
-          , P.succeed identity |= character '\n'
-          , P.succeed identity |= lineOfCharacters
-          ]
-  in
-  P.loop ( "","" ) each
+  fork
+    [ Branch (P.symbol "\n... ") P.succeed
+    , Branch (P.symbol "\n...\n") P.succeed
+    , Branch P.end P.succeed
+    ]
 
 
 anything : P.Parser String
@@ -390,6 +366,45 @@ checkIndent indent next =
 
 
 
+-- FORK
+
+
+type alias Branch a =
+  { end : P.Parser ()
+  , next : String -> P.Parser a
+  }
+
+
+fork : List (Branch a) -> P.Parser a
+fork branches =
+  P.loop [] (forkStep branches)
+    |> P.andThen identity
+
+
+forkStep : List (Branch a) -> List String -> P.Parser (P.Step (List String) (P.Parser a))
+forkStep branches strings =
+  let
+    toDone next =
+      P.Done (next (String.concat (List.reverse strings)))
+
+    toMove string =
+      P.Loop (string :: strings)
+
+    toNext branch =
+      P.succeed (\_ -> toDone branch.next)
+        |= branch.end
+  in
+  P.oneOf
+    [ P.oneOf <|
+        List.map toNext branches
+    , P.succeed ()
+        |. P.chompIf (always True)
+        |> P.getChompedString
+        |> P.map toMove
+    ]
+
+
+
 -- PROPERTY NAME
 
 
@@ -416,7 +431,7 @@ propertyName first =
           , P.succeed (Err << append name)
               |= if first 
                     then remaining
-                    else characters ['\n']
+                    else characters ['\n'] -- TODO this string can also be multiline!
           ]
   in
   P.oneOf

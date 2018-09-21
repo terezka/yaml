@@ -55,13 +55,25 @@ suite =
           expectValue "hey i am a parser" <| 
             Ast.String_ "hey i am a parser"
     , Test.test "a multi-line string" <|
-        \_ -> -- TODO weird indent issue
+        \_ -> 
           expectValue
             """how does one teach self-respect?
-how does one teach curiousity?
-if you have the answers, call me
-""" <| 
-            Ast.String_ "how does one teach self-respect?\nhow does one teach curiousity?if you have the answers, call me"
+            how does one teach curiousity?
+            if you have the answers, call me
+            """ <| 
+            Ast.String_ "how does one teach self-respect?\n            how does one teach curiousity?\n            if you have the answers, call me"
+    , Test.test "a multi-line string with three dot ending" <|
+        \_ -> 
+          expectValue
+            """how does one teach self-respect?
+            how does one teach curiousity?
+            if you have the answers, call me
+...
+
+
+  
+            """ <| 
+            Ast.String_ "how does one teach self-respect?\n            how does one teach curiousity?\n            if you have the answers, call me"
     , Test.test "a empty inline list" <|
         \_ -> 
           expectValue "[]" <|
