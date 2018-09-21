@@ -62,7 +62,7 @@ how does one teach curiousity?
 if you have the answers, call me
 """ <| 
             Ast.String_ "how does one teach self-respect?\nhow does one teach curiousity?if you have the answers, call me"
-    , Test.test "a emptu inline list" <|
+    , Test.test "a empty inline list" <|
         \_ -> 
           expectValue "[]" <|
             Ast.List_ []
@@ -82,6 +82,13 @@ if you have the answers, call me
         \_ -> 
           expectValue """[ aaa,
            bbb, 
+           ccc 
+           ]""" <|
+            Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]
+    , Test.test "an inline list with strings and with new lines and comments" <|
+        \_ -> 
+          expectValue """[ aaa,
+           bbb, # a dumb comment
            ccc 
            ]""" <|
             Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]

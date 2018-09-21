@@ -1,5 +1,6 @@
 module Yaml.Parser.Util exposing 
-  ( colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
+  ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine_, isListStart, isListEnd, either, neither
+  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
   , anyOf
   , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
   , nextIndent, checkIndent
@@ -8,6 +9,98 @@ module Yaml.Parser.Util exposing
 
 import Parser as P exposing ((|=), (|.))
 import Yaml.Parser.Ast as Ast
+
+
+
+-- QUESTIONS
+
+
+{-| -}
+isColon : Char -> Bool
+isColon =
+  is ':'
+
+
+{-| -}
+isComma : Char -> Bool
+isComma =
+  is ','
+
+
+{-| -}
+isDot : Char -> Bool
+isDot =
+  is '.'
+
+
+{-| -}
+isDash : Char -> Bool
+isDash =
+  is '-'
+
+
+{-| -}
+isHash : Char -> Bool
+isHash =
+  is '#'
+
+
+{-| -}
+isSpace : Char -> Bool
+isSpace =
+  is ' '
+
+
+{-| -}
+isNewLine_ : Char -> Bool
+isNewLine_ =
+  is '\n'
+
+
+{-| -}
+isListStart : Char -> Bool
+isListStart =
+  is '['
+
+
+{-| -}
+isListEnd : Char -> Bool
+isListEnd =
+  is ']'
+
+
+{-| -}
+isRecordStart : Char -> Bool
+isRecordStart =
+  is '{'
+
+
+{-| -}
+isRecordEnd : Char -> Bool
+isRecordEnd =
+  is '}'
+
+
+{-| -}
+either : (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
+either f1 f2 char =
+  f1 char || f2 char
+
+
+{-| -}
+neither : (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
+neither f1 f2 char =
+  not (f1 char) && not (f2 char)
+
+
+{-| -}
+is : Char -> Char -> Bool
+is searched char =
+  char == searched
+
+
+
+-- 
 
 
 {-| -}

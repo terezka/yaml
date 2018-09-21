@@ -144,27 +144,71 @@ listToplevelContinuedEntry values subIndent =
 -- LIST / INLINE
 
 
+{-| -}
 listInline : P.Parser Ast.Value
 listInline =
   P.succeed Ast.List_
-    |. P.symbol "["
+    |. P.chompIf U.isListStart
     |. U.whitespace
-    |= P.oneOf
-        [ P.succeed [] |. P.symbol "]"
-        , P.loop [] listInlineEach
-        ]
+    |= listInlineStepOne
 
 
-listInlineEach : List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
-listInlineEach values =
-  P.succeed (\v next -> next (v :: values))
-    |= valueInline [',', ']']
+listInlineStepOne : P.Parser (List Ast.Value)
+listInlineStepOne =
+  P.oneOf 
+    [ P.succeed [] 
+        |. P.chompIf U.isListEnd
+    , P.succeed identity
+        |= P.loop [] listInlineStep
+    ]
+
+
+listInlineStep : List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+listInlineStep elements =
+  P.succeed identity
     |. U.whitespace
-    |= P.oneOf
-        [ P.succeed P.Loop |. P.symbol "," 
-        , P.succeed (P.Done << List.reverse) |. P.symbol "]"
-        ]
-    |. U.spaces
+    |= listInlineValue
+    |> P.andThen (listInlineNext elements)
+
+
+listInlineValue : P.Parser Ast.Value
+listInlineValue =
+  P.oneOf
+    [ listInline
+    , recordInline
+    , listInlineString
+    ]
+
+
+listInlineString : P.Parser Ast.Value
+listInlineString =
+  P.succeed ()
+    |. P.chompWhile (U.neither U.isComma U.isListEnd)
+    |> P.getChompedString
+    |> P.map Ast.fromString
+
+
+listInlineNext : List Ast.Value -> Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+listInlineNext elements element =
+  P.oneOf
+    [ P.succeed (listInlineOnMore elements element)
+        |. P.chompIf U.isComma
+    , P.succeed (listInlineOnDone elements element)
+        |. P.chompIf U.isListEnd
+    ]
+
+
+listInlineOnMore : List Ast.Value -> Ast.Value -> P.Step (List Ast.Value) (List Ast.Value)
+listInlineOnMore elements element =
+  element :: elements
+    |> P.Loop
+
+
+listInlineOnDone : List Ast.Value -> Ast.Value -> P.Step (List Ast.Value) (List Ast.Value)
+listInlineOnDone elements element =
+  element :: elements
+    |> List.reverse
+    |> P.Done
 
 
 
