@@ -1,5 +1,5 @@
 module Yaml.Parser.Util exposing 
-  ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine_, isListStart, isListEnd, either, neither
+  ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine_, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
   , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
   , anyOf
   , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
@@ -91,6 +91,12 @@ either f1 f2 char =
 neither : (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
 neither f1 f2 char =
   not (f1 char) && not (f2 char)
+
+
+{-| -}
+neither3 : (Char -> Bool) -> (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
+neither3 f1 f2 f3 char =
+  not (f1 char) && not (f2 char) && not (f3 char)
 
 
 {-| -}

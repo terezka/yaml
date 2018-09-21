@@ -112,6 +112,14 @@ if you have the answers, call me
         \_ -> 
           expectValue "{bbb: bbb, aaa: aaa, ccc: ccc}" <|
             Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "an inline record with weird spacing" <|
+        \_ -> 
+          expectValue """
+{bbb:
+ bbb , aaa: aaa
+      , ccc: ccc}
+""" <|
+            Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "an inline record with an inline record inside" <|
         \_ -> 
           expectValue "{bbb: bbb, aaa: {bbb: bbb, aaa: aaa, ccc: ccc}, ccc: ccc}" <|

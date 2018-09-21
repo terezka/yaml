@@ -168,6 +168,7 @@ listInlineStep elements =
   P.succeed identity
     |. U.whitespace
     |= listInlineValue
+    |. U.whitespace
     |> P.andThen (listInlineNext elements)
 
 
@@ -349,56 +350,101 @@ recordToplevelMissingProperty value_ =
 recordInline : P.Parser Ast.Value
 recordInline =
   P.succeed (Ast.Record_ << Dict.fromList)
-    |. P.symbol "{"
+    |. P.chompIf U.isRecordStart
     |. U.whitespace
-    |= P.oneOf
-        [ P.succeed [] |. P.symbol "}"
-        , P.loop [] recordInlineEach
-        ]
+    |= recordInlineStepOne
 
 
-recordInlineEach : List Ast.Property -> P.Parser (P.Step (List Ast.Property) (List Ast.Property))
-recordInlineEach properties =
-  let
-    withProperty name =
-      case name of 
-        Ok validName ->
-          P.succeed (\v next -> next (Tuple.pair validName v :: properties))
-            |= recordInlineValue
-            |. U.whitespace
-            |= P.oneOf
-                [ P.succeed P.Loop |. U.comma |. U.whitespace
-                , P.succeed (P.Done << List.reverse) |. P.symbol "}" |. U.spaces
-                ]
-
-        Err _ -> 
-          errorMissingColon
-  in
-  U.propertyName False 
-    |> P.andThen withProperty
-
-
-recordInlineValue : P.Parser Ast.Value
-recordInlineValue =
-  P.oneOf
-    [ P.succeed identity
-        |. P.oneOf [ U.space, U.newLine ]
-        |. U.whitespace
-        |= valueInline [',', '}']
-        |. U.spaces
-    , P.succeed ()
-        |. P.chompIf (\c -> c /= ',' && c /= '}' && c /= '\n')
-        |> P.andThen (\_ -> errorMissingSpaceAfterColon)
-    , P.succeed Ast.Null_
+recordInlineStepOne : P.Parser (List Ast.Property)
+recordInlineStepOne =
+  P.oneOf 
+    [ P.succeed [] 
+        |. P.chompIf U.isRecordEnd
+    , P.succeed identity
+        |= P.loop [] recordInlineStep
     ]
 
 
-errorMissingColon : P.Parser a 
-errorMissingColon =
-  P.problem "I was parsing an inline record, but I couldn't find the \":\"!"
+recordInlineStep : List Ast.Property -> P.Parser (P.Step (List Ast.Property) (List Ast.Property))
+recordInlineStep elements =
+  P.succeed identity
+    |. U.whitespace
+    |= recordInlineValue
+    |. U.whitespace
+    |> P.andThen (recordInlineNext elements)
 
 
-errorMissingSpaceAfterColon : P.Parser a 
-errorMissingSpaceAfterColon =
-  P.problem "I was parsing an inline record, but missing a space between the \":\" and the value!"
+recordInlineValue : P.Parser Ast.Property
+recordInlineValue =
+  P.succeed Tuple.pair
+    |= recordInlinePropertyName
+    |. U.whitespace
+    |= recordInlinePropertyValue
 
+
+recordInlinePropertyName : P.Parser String
+recordInlinePropertyName =
+  P.succeed identity
+    |= P.oneOf
+        [ U.singleQuotes
+        , U.doubleQuotes
+        , recordInlinePropertyNameString
+        ]
+    |. P.chompWhile U.isSpace
+    |. P.oneOf
+        [ P.chompIf U.isColon
+        , P.problem "I was parsing an inline record, when I ran into an invalid property. It is missing the \":\"!"
+        ]
+    |. P.oneOf
+        [ P.chompIf U.isNewLine_
+        , P.chompIf U.isSpace
+        , P.problem "I was parsing an inline record, but missing a space or a new line between the \":\" and the value!"
+        ]
+
+
+recordInlinePropertyNameString : P.Parser String
+recordInlinePropertyNameString = -- TODO allow numeric name
+  P.succeed ()
+    |. P.chompWhile (U.neither3 U.isColon U.isComma U.isRecordEnd)
+    |> P.getChompedString
+    |> P.map String.trim
+
+
+recordInlinePropertyValue : P.Parser Ast.Value
+recordInlinePropertyValue =
+  P.oneOf
+    [ listInline
+    , recordInline
+    , recordInlineString
+    ]
+
+
+recordInlineString : P.Parser Ast.Value
+recordInlineString =
+  P.succeed ()
+    |. P.chompWhile (U.neither U.isComma U.isRecordEnd)
+    |> P.getChompedString
+    |> P.map Ast.fromString
+
+
+recordInlineNext : List Ast.Property -> Ast.Property -> P.Parser (P.Step (List Ast.Property) (List Ast.Property))
+recordInlineNext elements element =
+  P.oneOf
+    [ P.succeed (recordInlineOnMore elements element)
+        |. P.chompIf U.isComma
+    , P.succeed (recordInlineOnDone elements element)
+        |. P.chompIf U.isRecordEnd
+    ]
+
+
+recordInlineOnMore : List Ast.Property -> Ast.Property -> P.Step (List Ast.Property) (List Ast.Property)
+recordInlineOnMore elements element =
+  element :: elements
+    |> P.Loop
+
+
+recordInlineOnDone : List Ast.Property -> Ast.Property -> P.Step (List Ast.Property) (List Ast.Property)
+recordInlineOnDone elements element =
+  element :: elements
+    |> List.reverse
+    |> P.Done
