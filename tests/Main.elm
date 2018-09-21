@@ -62,6 +62,10 @@ how does one teach curiousity?
 if you have the answers, call me
 """ <| 
             Ast.String_ "how does one teach self-respect?\nhow does one teach curiousity?if you have the answers, call me"
+    , Test.test "a emptu inline list" <|
+        \_ -> 
+          expectValue "[]" <|
+            Ast.List_ []
     , Test.test "an inline list with ints and no spaces" <|
         \_ -> 
           expectValue "[0,1,2]" <|

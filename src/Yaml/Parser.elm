@@ -5,7 +5,6 @@ import Yaml.Parser.Ast as Ast
 import Yaml.Parser.Util as U
 import Yaml.Parser.Document
 import Yaml.Parser.String
-import Yaml.Parser.Record
 import Yaml.Parser.Null
 import Dict
 
@@ -151,7 +150,7 @@ listInline =
     |. P.symbol "["
     |. U.whitespace
     |= P.oneOf
-        [ P.succeed [] |. P.symbol "}"
+        [ P.succeed [] |. P.symbol "]"
         , P.loop [] listInlineEach
         ]
 
