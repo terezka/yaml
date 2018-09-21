@@ -396,7 +396,7 @@ recordInlinePropertyName =
         , P.problem "I was parsing an inline record, when I ran into an invalid property. It is missing the \":\"!"
         ]
     |. P.oneOf
-        [ P.chompIf U.isNewLine_
+        [ P.chompIf U.isNewLine
         , P.chompIf U.isSpace
         , P.problem "I was parsing an inline record, but missing a space or a new line between the \":\" and the value!"
         ]

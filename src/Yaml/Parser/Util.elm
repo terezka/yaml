@@ -1,5 +1,5 @@
 module Yaml.Parser.Util exposing 
-  ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine_, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
+  ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
   , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
   , anyOf
   , Branch, fork
@@ -53,8 +53,8 @@ isSpace =
 
 
 {-| -}
-isNewLine_ : Char -> Bool
-isNewLine_ =
+isNewLine : Char -> Bool
+isNewLine =
   is '\n'
 
 
@@ -305,28 +305,6 @@ remaining =
     , Branch (P.symbol "\n...\n") P.succeed
     , Branch P.end P.succeed
     ]
-
-
-anything : P.Parser String
-anything =
-  P.succeed ()
-    |. P.chompWhile (always True)
-    |> P.getChompedString
-
-
-isThreeDots : String -> Bool
-isThreeDots s =
-  String.trimRight s == "..."
-
-
-isNewLine : String -> Bool
-isNewLine s =
-  String.replace " " "" s == "\n"
-
-
-isJustSpaces : String -> Bool
-isJustSpaces s =
-  String.isEmpty (String.replace " " "" s)
 
 
 
