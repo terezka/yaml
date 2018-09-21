@@ -22,6 +22,10 @@ suite =
         \_ -> 
           expectValue "..." <|
             Ast.Null_
+    ,  Test.test "nothing with document start and end" <|
+        \_ -> -- TODO is this the right response?
+          expectValue "---..." <|
+            Ast.Null_
     , Test.test "null" <|
         \_ -> 
           expectValue "" <|
