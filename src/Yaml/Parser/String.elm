@@ -36,7 +36,13 @@ inline endings =
 exceptions : P.Parser Ast.Value
 exceptions =
     let dashed s = "---" ++ s in
-    P.succeed (Ast.String_ << dashed)
-        |. U.threeDashes
-        |= U.remaining
+    P.oneOf
+      [ P.succeed (Ast.String_ << dashed)
+          |. U.threeDashes
+          |= U.remaining
+      , P.succeed Ast.Null_
+          |. U.threeDots
+          |. U.remaining
+      ]
+      
 

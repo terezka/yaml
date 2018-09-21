@@ -14,6 +14,14 @@ suite =
         \_ -> 
           expectValue "" <|
             Ast.Null_
+    ,  Test.test "nothing with document start" <|
+        \_ -> 
+          expectValue "---" <|
+            Ast.Null_
+    ,  Test.test "nothing with document end" <|
+        \_ -> 
+          expectValue "..." <|
+            Ast.Null_
     , Test.test "null" <|
         \_ -> 
           expectValue "" <|
