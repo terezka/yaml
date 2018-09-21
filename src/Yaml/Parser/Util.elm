@@ -1,6 +1,6 @@
 module Yaml.Parser.Util exposing 
   ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
-  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace
+  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace, anything
   , anyOf
   , Branch, fork
   , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
@@ -303,8 +303,17 @@ remaining =
   fork
     [ Branch (P.symbol "\n... ") P.succeed
     , Branch (P.symbol "\n...\n") P.succeed
+    , Branch (P.symbol "\n..." |. whitespace |. P.end) P.succeed
     , Branch P.end P.succeed
     ]
+
+
+{-| -}
+anything : P.Parser String
+anything =
+  P.succeed ()
+    |. P.chompIf (always True)
+    |> P.getChompedString
 
 
 
@@ -373,12 +382,8 @@ forkStep branches strings =
         |= branch.end
   in
   P.oneOf
-    [ P.oneOf <|
-        List.map toNext branches
-    , P.succeed ()
-        |. P.chompIf (always True)
-        |> P.getChompedString
-        |> P.map toMove
+    [ P.oneOf (List.map toNext branches)
+    , P.map toMove anything
     ]
 
 

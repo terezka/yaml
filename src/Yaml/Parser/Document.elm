@@ -1,4 +1,4 @@
-module Yaml.Parser.Document exposing (begins, ends)
+module Yaml.Parser.Document exposing (begins, ends, ending)
 
 
 import Parser as P exposing ((|=), (|.))
@@ -40,3 +40,14 @@ ends =
     |. P.oneOf [ U.threeDots, P.succeed () ]
     |. U.whitespace
     |. P.end
+
+
+{-| -}
+ending : P.Parser ()
+ending =
+  P.oneOf
+    [ P.symbol "\n... "
+    , P.symbol "\n...\n"
+    , P.end
+    ]
+

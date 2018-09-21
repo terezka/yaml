@@ -50,7 +50,7 @@ value =
     , recordInline
     , listInline
     , P.andThen listToplevel U.nextIndent
-    , P.andThen (recordToplevel True) U.nextIndent
+    , P.andThen recordToplevel U.nextIndent
     , Yaml.Parser.String.toplevel
     ]
 
@@ -63,7 +63,7 @@ valueToplevel =
       , recordInline
       , listInline
       , P.andThen listToplevel P.getCol
-      , P.andThen (recordToplevel False) P.getCol
+      , P.andThen recordToplevelInner P.getCol
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
@@ -218,16 +218,44 @@ listInlineOnDone elements element =
 
 
 {-| -}
-recordToplevel : Bool -> Int -> P.Parser Ast.Value
-recordToplevel isFirstValue indent =
-  let
-    withProperty name =
-      case name of 
-        Ok validName -> recordToplevelConfirmed indent validName
-        Err value_ -> P.succeed value_
-  in
-  U.propertyName isFirstValue 
-    |> P.andThen withProperty
+recordToplevel : Int -> P.Parser Ast.Value
+recordToplevel indent =
+  P.oneOf 
+    [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
+    , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
+    , U.fork
+        [ U.Branch (P.symbol ":") (recordToplevelConfirmed indent)
+        , U.Branch Yaml.Parser.Document.ending (P.succeed << Ast.fromString)
+        ]
+    ]
+
+
+{-| -}
+recordToplevelInner : Int -> P.Parser Ast.Value
+recordToplevelInner indent =
+  P.oneOf 
+    [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
+    , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
+    , U.fork
+        [ U.Branch (P.symbol ":") (recordToplevelConfirmed indent)
+        , U.Branch (P.symbol "\n") (P.succeed << Ast.fromString)
+        , U.Branch Yaml.Parser.Document.ending (P.succeed << Ast.fromString)
+        ]
+    ]
+
+
+fromQuotedPropertyName : Int -> String -> P.Parser Ast.Value
+fromQuotedPropertyName indent name =
+  P.succeed identity
+    |. U.spaces
+    |= P.oneOf
+        [ P.succeed ()
+            |. P.chompIf U.isColon
+            |> P.andThen (\_ -> recordToplevelConfirmed indent name)
+        , P.succeed (Ast.String_ name)
+            |. U.whitespace
+            |. P.end
+        ]
 
 
 recordToplevelConfirmed : Int -> String -> P.Parser Ast.Value
