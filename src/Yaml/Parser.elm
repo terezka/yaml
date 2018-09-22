@@ -93,20 +93,16 @@ valueInline endings =
 {-| -}
 listToplevel : Int -> P.Parser Ast.Value
 listToplevel indent =
-  P.succeed identity
-    |. P.chompIf U.isDash
-    |= P.oneOf
-        [ P.succeed identity
-            |. P.chompIf U.isNewLine
-            |= listToplevelValue indent
-            |> P.andThen (listToplevelStepOne indent)
-        , P.succeed identity
-            |. P.chompIf U.isSpace
-            |= listToplevelValue indent
-            |> P.andThen (listToplevelStepOne indent)
-        , P.succeed Ast.fromString
-            |= U.remaining -- TODO add dash
-        ]
+  P.oneOf
+    [ P.succeed identity
+        |. P.symbol "- "
+        |= listToplevelValue indent
+        |> P.andThen (listToplevelStepOne indent)
+    , P.succeed identity
+        |. P.symbol "-\n"
+        |= listToplevelValue indent
+        |> P.andThen (listToplevelStepOne indent)
+    ]
 
 
 listToplevelStepOne : Int -> Ast.Value -> P.Parser Ast.Value
@@ -123,16 +119,10 @@ listToplevelStep indent values =
   U.indented indent
     { smaller = P.succeed finish
     , exactly =
-        P.succeed identity
+        P.succeed next
           |. P.chompIf U.isDash
-          |= P.oneOf
-                [ P.succeed next
-                    |. P.chompIf U.isNewLine
-                    |= listToplevelValue indent
-                , P.succeed next
-                    |. P.chompIf U.isSpace
-                    |= listToplevelValue indent
-                ]
+          |. P.chompIf (U.either U.isNewLine U.isSpace)
+          |= listToplevelValue indent
     , larger  = P.map next << listToplevelSub indent
     , ending  = P.succeed finish
     }
