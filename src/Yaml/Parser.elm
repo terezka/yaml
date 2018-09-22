@@ -35,6 +35,7 @@ parser : P.Parser Ast.Value
 parser =
   P.succeed identity
     |. Yaml.Parser.Document.begins
+    |. U.whitespace
     |= value
     |. Yaml.Parser.Document.ends
 
@@ -49,20 +50,9 @@ value =
     [ Yaml.Parser.String.exceptions
     , recordInline
     , listInline
-    , P.andThen list U.nextIndent
-    , P.andThen (recordOrString 0) U.nextIndent
-    , Yaml.Parser.String.toplevel
+    , P.andThen list P.getCol
+    , P.andThen (recordOrString 0) P.getCol
     ]
-
-
-valueInline : List Char -> P.Parser Ast.Value
-valueInline endings =
-  P.lazy <| \_ -> 
-    P.oneOf
-      [ recordInline
-      , listInline
-      , Yaml.Parser.String.inline endings
-      ]
 
 
 

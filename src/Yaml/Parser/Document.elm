@@ -11,7 +11,7 @@ begins =
   P.oneOf
     [ P.succeed identity
         |. U.whitespace
-        |. P.andThen dashes U.nextIndent
+        |. P.andThen dashes P.getCol
     , P.succeed identity
         |. U.whitespace
     ]
