@@ -49,7 +49,7 @@ value =
     [ Yaml.Parser.String.exceptions
     , recordInline
     , listInline
-    , P.andThen listToplevel U.nextIndent
+    , P.andThen list U.nextIndent
     , P.andThen recordToplevel U.nextIndent
     , Yaml.Parser.String.toplevel
     ]
@@ -62,7 +62,7 @@ valueToplevel =
       [ Yaml.Parser.String.exceptions
       , recordInline
       , listInline
-      , P.andThen listToplevel P.getCol
+      , P.andThen list P.getCol
       , P.andThen recordToplevelInner P.getCol
           |> P.andThen (\result ->
               case result of
@@ -90,52 +90,65 @@ valueInline endings =
 -- LIST / TOP LEVEL
 
 
-{-| -}
-listToplevel : Int -> P.Parser Ast.Value
-listToplevel indent =
+list : Int -> P.Parser Ast.Value
+list indent =
   let
-    withEntry value_ =
+    confirmed value_ =
       P.succeed Ast.List_
-        |= P.loop [ value_ ] (listToplevelStep indent)
+        |= P.loop [ value_ ] (listStep indent)
   in
-  listToplevelEntry indent
-    |> P.andThen withEntry
+  listElement indent
+    |> P.andThen confirmed
+  
 
-
-listToplevelEntry : Int -> P.Parser Ast.Value
-listToplevelEntry indent =
-  P.succeed identity
-    |. P.oneOf 
-        [ P.symbol "- "
-        , P.symbol "-\n"
-        ]
-    |= U.indented indent
-        { smaller = P.succeed Ast.Null_
-        , exactly = P.succeed Ast.Null_
-        , larger  = listToplevelSub indent
-        , ending = P.succeed Ast.Null_
-        }
-
-
-listToplevelStep : Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
-listToplevelStep indent values =
+listStep : Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+listStep indent values =
   let finish = P.Done (List.reverse values)
       next value_ = P.Loop (value_ :: values)
   in
   U.indented indent
-    { smaller = P.succeed finish
-    , exactly = P.map next (listToplevelEntry indent)
-    , larger  = P.map next << listToplevelSub indent
-    , ending  = P.succeed finish
+    { smaller = 
+        P.succeed finish
+    , exactly = 
+        P.succeed next
+          |= listElement indent
+    , larger = \_ -> 
+        P.problem "I was looking for the next element but didn't find one."
+    , ending = 
+        P.succeed finish
     }
 
 
-listToplevelSub : Int -> Int -> P.Parser Ast.Value
-listToplevelSub indent indent_ =
+listElement : Int -> P.Parser Ast.Value
+listElement indent =
+  P.succeed identity 
+    |. listElementBegin
+    |= U.indented indent
+        { smaller = 
+            P.succeed Ast.Null_
+        , exactly =
+            P.succeed Ast.Null_
+        , larger = 
+            listElementValue indent 
+        , ending = 
+            P.succeed Ast.Null_
+        }
+
+
+listElementBegin : P.Parser ()
+listElementBegin = 
+  P.oneOf 
+    [ P.symbol "- "
+    , P.symbol "-\n"
+    ]
+
+
+listElementValue : Int -> Int -> P.Parser Ast.Value
+listElementValue indent indent_ =
   P.oneOf
     [ listInline
     , recordInline
-    , listToplevel indent_
+    , P.andThen list P.getCol
     , P.succeed (\string next -> next string)
         |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
         |. U.spaces
@@ -312,7 +325,7 @@ recordToplevelEach indent properties =
 
       recordToplevelNextOrList ( name, _ ) rest =
         P.oneOf 
-          [ P.map (\list -> continued (( name, list ) :: rest)) (listToplevel indent)
+          [ P.map (\value_ -> continued (( name, value_ ) :: rest)) (list indent)
           , P.map next recordToplevelNewEntry
           , P.succeed finish 
           ]
@@ -393,9 +406,9 @@ recordToplevelMissingProperty value_ =
         Ast.Null_ -> "a null"
         Ast.String_ string -> "a string (" ++ string ++ ")"
         Ast.Record_ record -> "another record!"
-        Ast.List_ list -> "a list!"
-        Ast.Int_ list -> "an int!"
-        Ast.Float_ list -> "a float!"
+        Ast.List_ _ -> "a list!"
+        Ast.Int_ _ -> "an int!"
+        Ast.Float_ _ -> "a float!"
         Ast.Bool_ _ -> "a boolean!"
 
 
