@@ -89,8 +89,11 @@ listStep indent values =
     { smaller = 
         P.succeed finish
     , exactly = 
-        P.succeed next
-          |= listElement indent
+        P.oneOf
+          [ P.succeed next
+              |= listElement indent
+          , P.succeed finish -- for lists on the same indentation level as the parent record 
+          ]
     , larger = \_ -> 
         P.problem "I was looking for the next element but didn't find one."
     , ending = 
@@ -279,11 +282,16 @@ recordElement : Int -> P.Parser Ast.Property
 recordElement indent =
   let
     property =
-      P.chompWhile (U.neither U.isColon U.isNewLine)
-        |> P.getChompedString -- TODO
+      P.oneOf 
+        [ U.singleQuotes
+        , U.doubleQuotes 
+        , P.chompWhile (U.neither U.isColon U.isNewLine)
+            |> P.getChompedString
+        ]
   in
   P.succeed Tuple.pair 
     |= property
+    |. U.spaces
     |. P.chompIf U.isColon
     |= recordElementValue indent
 
