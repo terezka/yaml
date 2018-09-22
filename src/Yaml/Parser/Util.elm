@@ -322,12 +322,9 @@ doubleQuotes =
 {-| -}
 remaining : P.Parser String
 remaining =
-  fork
-    [ Branch (P.symbol "\n... ") P.succeed
-    , Branch (P.symbol "\n...\n") P.succeed
-    , Branch (P.symbol "\n..." |. whitespace |. P.end) P.succeed
-    , Branch P.end P.succeed
-    ]
+  P.succeed ()
+    |. P.chompUntilEndOr "\n...\n"
+    |> P.getChompedString
 
 
 {-| -}

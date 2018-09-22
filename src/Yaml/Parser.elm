@@ -50,30 +50,9 @@ value =
     , recordInline
     , listInline
     , P.andThen list U.nextIndent
-    , P.andThen recordToplevel U.nextIndent
+    , P.andThen (recordOrString 0) U.nextIndent
     , Yaml.Parser.String.toplevel
     ]
-
-
-valueToplevel : P.Parser Ast.Value
-valueToplevel =
-  P.lazy <| \_ -> 
-    P.oneOf
-      [ Yaml.Parser.String.exceptions
-      , recordInline
-      , listInline
-      , P.andThen list P.getCol
-      , P.andThen recordToplevelInner P.getCol
-          |> P.andThen (\result ->
-              case result of
-                Ok value_ -> P.succeed value_
-                Err string -> 
-                  P.succeed (\r -> Ast.fromString (string ++ r)) 
-                  |= U.remaining
-              )
-      , Yaml.Parser.Null.inline
-      , Yaml.Parser.String.inline ['\n']
-      ]
 
 
 valueInline : List Char -> P.Parser Ast.Value
@@ -128,7 +107,7 @@ listElement indent =
             P.succeed Ast.Null_
         , exactly =
             P.succeed Ast.Null_
-        , larger = \_ ->
+        , larger =
             listElementValue indent 
         , ending = 
             P.succeed Ast.Null_
@@ -143,50 +122,13 @@ listElementBegin =
     ]
 
 
-listElementValue : Int -> P.Parser Ast.Value
-listElementValue indent =
+listElementValue : Int -> Int -> P.Parser Ast.Value
+listElementValue indent indent_ =
   P.oneOf
     [ listInline
     , recordInline
-    , P.andThen list P.getCol
-    , P.andThen (listRecordOrString indent) P.getCol
-    ]
-
-
--- TODO move down
-listRecordOrString : Int -> Int -> P.Parser Ast.Value
-listRecordOrString indent indent_ =
-  let
-    withQuote qoute =
-      P.oneOf
-        [ property qoute
-        , P.succeed (Ast.String_ qoute)
-        ]
-
-    withString string =
-      P.oneOf
-        [ property string
-        , P.succeed (addRemaining string)
-            |= U.multiline indent
-        ]
-
-    property name =
-      P.succeed (recordToplevelConfirmed indent_ name)
-        |. P.chompIf U.isColon 
-        |> P.andThen identity
-
-    addRemaining string remaining =
-      Ast.fromString (string ++ remaining)
-  in
-  P.oneOf
-    [ P.succeed identity
-        |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
-        |. U.spaces
-        |> P.andThen withQuote
-    , P.succeed identity
-        |. P.chompWhile (U.neither U.isColon U.isNewLine)
-        |> P.getChompedString
-        |> P.andThen withString
+    , list indent_
+    , recordOrString indent indent_
     ]
 
 
@@ -267,167 +209,106 @@ listInlineOnDone elements element =
 -- RECORD / TOPLEVEL
 
 
-{-| -}
-recordToplevel : Int -> P.Parser Ast.Value
-recordToplevel indent =
-  P.oneOf 
-    [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
-        |> P.andThen (\r -> 
-            case r of
-              Ok v -> P.succeed v
-              Err s -> P.succeed (Ast.String_ s)
-          )
-    , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
-        |> P.andThen (\r -> 
-            case r of
-              Ok v -> P.succeed v
-              Err s -> P.succeed (Ast.String_ s)
-          )
-    , U.fork
-        [ U.Branch (P.symbol ":") (recordToplevelConfirmed indent)
-        , U.Branch Yaml.Parser.Document.ending (P.succeed << Ast.fromString)
-        ]
-    ]
-
-
-{-| -}
-recordToplevelInner : Int -> P.Parser (Result String Ast.Value)
-recordToplevelInner indent =
-  P.oneOf 
-    [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
-    , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
-    , U.fork
-        [ U.Branch (P.symbol ":") (\v -> P.succeed Ok |= recordToplevelConfirmed indent v)
-        , U.Branch (P.symbol "\n") (P.succeed << Err)
-        , U.Branch Yaml.Parser.Document.ending (P.succeed << Err)
-        ]
-    ]
-
-
-fromQuotedPropertyName : Int -> String -> P.Parser (Result String Ast.Value)
-fromQuotedPropertyName indent name =
-  P.succeed identity
-    |. U.spaces
-    |= P.oneOf
-        [ P.succeed ()
-            |. P.chompIf U.isColon
-            |> P.andThen (\_ -> P.succeed Ok |= recordToplevelConfirmed indent name)
-        , P.succeed (Err name)
-            |. U.whitespace
-            |. P.end
-        ]
-
-
-recordToplevelConfirmed : Int -> String -> P.Parser Ast.Value
-recordToplevelConfirmed indent name =
+recordOrString : Int -> Int -> P.Parser Ast.Value
+recordOrString indent indent_ =
   let
-    withValue value_ =
+    withQuote qoute =
+      P.oneOf
+        [ property qoute
+        , P.succeed (Ast.String_ qoute)
+        ]
+
+    withString string =
+      P.oneOf
+        [ property string
+        , P.succeed (addRemaining string)
+            |= if indent == 0 then U.remaining else U.multiline indent 
+        ]
+
+    property name =
+      P.succeed (record indent_ name)
+        |. P.chompIf U.isColon 
+        |> P.andThen identity
+
+    addRemaining string remaining =
+      Ast.fromString (string ++ remaining)
+  in
+  P.oneOf
+    [ P.succeed identity
+        |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
+        |. U.spaces
+        |> P.andThen withQuote
+    , P.succeed identity
+        |. P.chompIf (U.neither U.isColon U.isNewLine)
+        |. P.chompWhile (U.neither U.isColon U.isNewLine)
+        |> P.getChompedString
+        |> P.andThen withString
+    ]
+
+
+record : Int -> String -> P.Parser Ast.Value
+record indent property =
+  let
+    confirmed value_ =
       P.succeed (Ast.Record_ << Dict.fromList)
-        |= P.loop [ Tuple.pair name value_ ] (recordToplevelEach indent)
+        |= P.loop [ ( property, value_ ) ] (recordStep indent)
   in
-  valueInline ['\n']
-    |> P.andThen withValue
+  recordElementValue indent -- TODO move to `recordOrString`
+    |> P.andThen confirmed
 
 
-recordToplevelEach : Int -> List Ast.Property -> P.Parser (P.Step (List Ast.Property) (List Ast.Property))
-recordToplevelEach indent properties =
-  let finish = P.Done (List.reverse properties)
-      next property = P.Loop (property :: properties)
-      continued = P.Loop
-
-      recordToplevelNext =
-        P.oneOf 
-          [ P.map next recordToplevelNewEntry
-          , P.succeed finish 
-          ]
-
-      recordToplevelNextOrList ( name, _ ) rest =
-        P.oneOf 
-          [ P.map (\value_ -> continued (( name, value_ ) :: rest)) (list indent)
-          , P.map next recordToplevelNewEntry
-          , P.succeed finish 
-          ]
+recordStep : Int -> List Ast.Property -> P.Parser (P.Step (List Ast.Property) (List Ast.Property))
+recordStep indent values =
+  let finish = P.Done (List.reverse values)
+      next value_ = P.Loop (value_ :: values)
   in
-  U.checkIndent indent
-    { smaller = P.succeed finish
+  U.indented indent
+    { smaller = 
+        P.succeed finish
     , exactly = 
-        case properties of 
-          ( name, value_ ) :: rest ->
-            case value_ of
-              Ast.Null_ ->
-                -- Lists are allowed on the same level as the record
-                recordToplevelNextOrList ( name, value_ ) rest
-                
-              _ ->
-                recordToplevelNext
-
-          _ ->
-            recordToplevelNext
-    , larger = P.map continued << recordToplevelContinuedEntry properties
-    , ending = P.succeed finish
+        P.succeed next
+          |= recordElement indent
+    , larger = \_ -> 
+        P.problem "I was looking for the next property but didn't find one."
+    , ending = 
+        P.succeed finish
     }
 
 
-recordToplevelNewEntry : P.Parser Ast.Property
-recordToplevelNewEntry =
+recordElement : Int -> P.Parser Ast.Property
+recordElement indent =
   let
-    withProperty name =
-      case name of 
-        Ok validName ->
-          P.map (Tuple.pair validName) <|
-            P.oneOf 
-              [ Yaml.Parser.Null.inline
-              , P.succeed identity
-                  |. U.space
-                  |. U.spaces
-                  |= valueInline ['\n']
-              ]
-
-        Err _ -> 
-          recordToplevelMissingColon
+    property =
+      P.chompWhile (U.neither U.isColon U.isNewLine)
+        |> P.getChompedString -- TODO
   in
-  U.propertyName False |> P.andThen withProperty
+  P.succeed Tuple.pair 
+    |= property
+    |. P.chompIf U.isColon
+    |= recordElementValue indent
 
 
-recordToplevelContinuedEntry : List Ast.Property -> Int -> P.Parser (List Ast.Property)
-recordToplevelContinuedEntry properties subIndent =
-  let
-    coalesce new =
-      case properties of
-        ( name, value_ ) :: rest ->
-          case ( value_, new ) of
-            ( Ast.Null_, _ ) -> 
-              P.succeed (( name, new ) :: rest)
-
-            ( Ast.String_ prev, Ast.String_ string ) -> -- TODO don't skip new lines
-              P.succeed (( name, Ast.String_ (prev ++ " " ++ string) ) :: rest)
-
-            ( _, _ ) ->
-              recordToplevelMissingProperty new
-
-        rest ->
-          recordToplevelMissingProperty new
-  in
-  P.andThen coalesce valueToplevel
-
-
-recordToplevelMissingColon : P.Parser a
-recordToplevelMissingColon =
-  P.problem "I was parsing a record, but I couldn't find the \":\"!"
-
-
-recordToplevelMissingProperty : Ast.Value -> P.Parser a
-recordToplevelMissingProperty value_ =
-  P.problem <|
-    "I was parsing a record and was expecting a new property, but instead I got " ++
-      case value_ of
-        Ast.Null_ -> "a null"
-        Ast.String_ string -> "a string (" ++ string ++ ")"
-        Ast.Record_ record -> "another record!"
-        Ast.List_ _ -> "a list!"
-        Ast.Int_ _ -> "an int!"
-        Ast.Float_ _ -> "a float!"
-        Ast.Bool_ _ -> "a boolean!"
+recordElementValue : Int -> P.Parser Ast.Value
+recordElementValue indent =
+  U.indented indent
+    { smaller = 
+        P.succeed Ast.Null_
+    , exactly =
+        P.oneOf
+          [ list indent
+          , P.succeed Ast.Null_
+          ]
+    , larger = \indent_ ->
+        P.oneOf
+          [ listInline
+          , recordInline
+          , list indent_
+          , recordOrString indent indent_
+          ]
+    , ending = 
+        P.succeed Ast.Null_
+    }
+  
 
 
 
