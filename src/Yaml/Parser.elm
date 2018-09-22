@@ -128,7 +128,7 @@ listElement indent =
             P.succeed Ast.Null_
         , exactly =
             P.succeed Ast.Null_
-        , larger = 
+        , larger = \_ ->
             listElementValue indent 
         , ending = 
             P.succeed Ast.Null_
@@ -143,19 +143,19 @@ listElementBegin =
     ]
 
 
-listElementValue : Int -> Int -> P.Parser Ast.Value
-listElementValue indent indent_ =
+listElementValue : Int -> P.Parser Ast.Value
+listElementValue indent =
   P.oneOf
     [ listInline
     , recordInline
     , P.andThen list P.getCol
-    , recordOrString indent indent_
+    , P.andThen (listRecordOrString indent) P.getCol
     ]
 
 
 -- TODO move down
-recordOrString : Int -> Int -> P.Parser Ast.Value
-recordOrString indent indent_ =
+listRecordOrString : Int -> Int -> P.Parser Ast.Value
+listRecordOrString indent indent_ =
   let
     withQuote qoute =
       P.oneOf
