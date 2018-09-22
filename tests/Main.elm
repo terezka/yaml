@@ -71,7 +71,7 @@ suite =
 ...
 
 
-  
+
             """ <| 
             Ast.String_ "how does one teach self-respect?\n            how does one teach curiousity?\n            if you have the answers, call me"
     , Test.test "a empty inline list" <|
@@ -126,11 +126,12 @@ suite =
             Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "an inline record with weird spacing" <|
         \_ -> 
-          expectValue """
-{bbb:
- bbb , aaa: aaa
-      , ccc: ccc}
-""" <|
+          expectValue 
+            """
+            {bbb:
+             bbb , aaa: aaa
+                  , ccc: ccc}
+            """ <|
             Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "an inline record with an inline record inside" <|
         \_ -> 
@@ -138,45 +139,67 @@ suite =
             Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.Record_ (Dict.fromList [ ("bbb", Ast.String_ "bbb"), ("aaa", Ast.String_ "aaa"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
     , Test.test "a list" <|
         \_ -> 
-          expectValue """
-- aaa
-- bbb
-- ccc
-
-""" <|
+          expectValue 
+            """
+            - aaa
+            - bbb
+            - ccc
+            """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]
+      , Test.test "a list with null" <|
+        \_ -> 
+          expectValue 
+            """
+            -
+            - bbb
+            - ccc
+            """ <|
+            Ast.List_ [ Ast.Null_, Ast.String_ "bbb", Ast.String_ "ccc" ]
+      , Test.test "a list with multi-line string" <|
+        \_ -> 
+          expectValue 
+            """
+            -
+            - bbb
+             bbb bbb
+             bbb
+            - ccc
+            """ <|
+              Ast.List_ [ Ast.Null_, Ast.String_ "bbb\nbbb bbb\nbbb", Ast.String_ "ccc" ]
       , Test.test "a list with a list inside" <|
         \_ -> 
           expectValue """
-- aaa
--
-  - aaa
-  - bbb
-  - ccc
-- ccc
+            - aaa
+            -
+              - aaa
+              - bbb
+              - ccc
+            - ccc
 
-""" <|
+            """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
       , Test.test "a record" <|
         \_ -> 
-          expectValue """
-aaa: aaa
-bbb: bbb
-ccc: ccc
+          expectValue 
+            """
+            aaa: aaa
+            bbb: bbb
+            ccc: ccc
 
-""" <|
+            """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "a record with a record inside" <|
         \_ -> 
-          expectValue """
-aaa: aaa
-bbb:
-  aaa: aaa
-  bbb: bbb
-  ccc: ccc
-ccc: ccc
+          expectValue 
+            """
+            aaa: aaa
+            bbb:
+              aaa: aaa
+              bbb: bbb
+              ccc: ccc
+            ccc: ccc
 
-""" <|
+            """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
     ]
 
@@ -185,3 +208,7 @@ expectValue : String -> Ast.Value -> Expect.Expectation
 expectValue subject expected =
   Parser.fromString subject
     |> Expect.equal (Ok expected)
+ 
+ 
+ 
+ 
