@@ -64,6 +64,13 @@ valueToplevel =
       , listInline
       , P.andThen listToplevel P.getCol
       , P.andThen recordToplevelInner P.getCol
+          |> P.andThen (\result ->
+              case result of
+                Ok value_ -> P.succeed value_
+                Err string -> 
+                  P.succeed (\r -> Ast.fromString (string ++ r)) 
+                  |= U.remaining
+              )
       , Yaml.Parser.Null.inline
       , Yaml.Parser.String.inline ['\n']
       ]
@@ -86,58 +93,96 @@ valueInline endings =
 {-| -}
 listToplevel : Int -> P.Parser Ast.Value
 listToplevel indent =
-  let
-    withValue value_ =
-      P.succeed Ast.List_
-        |= P.loop [ value_ ] (listToplevelEach indent)
-  in
-  listToplevelNewEntry
-    |> P.andThen withValue
-
-
-listToplevelEach : Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
-listToplevelEach indent values =
-  let finish = P.Done (List.reverse values)
-      next value_ = P.Loop (value_ :: values)
-      continued = P.Loop
-  in
-  U.checkIndent indent
-    { smaller = P.succeed finish
-    , exactly = P.oneOf [ P.map next (listToplevelNewEntry), P.succeed finish ]
-    , larger  = P.map continued << listToplevelContinuedEntry values
-    , ending = P.succeed finish
-    }
-
-
-listToplevelNewEntry : P.Parser Ast.Value
-listToplevelNewEntry =
   P.succeed identity
-    |. U.dash
-    |= P.oneOf 
-        [ P.succeed Ast.Null_ -- TODO
-            |. U.newLine
+    |. P.chompIf U.isDash
+    |= P.oneOf
+        [ P.succeed identity
+            |. P.chompIf U.isNewLine
+            |= listToplevelValue indent
+            |> P.andThen (listToplevelStepOne indent)
         , P.succeed identity
-            |. U.space
-            |. U.spaces
-            |= valueToplevel
+            |. P.chompIf U.isSpace
+            |= P.oneOf
+                  [ listInline
+                  , recordInline
+                  , P.map Ast.fromString (U.multiline indent)
+                  ]
+            |> P.andThen (listToplevelStepOne indent)
+        , P.succeed Ast.fromString
+            |= U.remaining -- TODO add dash
         ]
 
 
-listToplevelContinuedEntry : List Ast.Value -> Int -> P.Parser (List Ast.Value)
-listToplevelContinuedEntry values subIndent =
-  let
-    coalesce value_ =
-      case ( values, value_ ) of
-        ( Ast.Null_ :: rest, _ ) -> 
-          P.succeed (value_ :: rest)
+listToplevelStepOne : Int -> Ast.Value -> P.Parser Ast.Value
+listToplevelStepOne indent value_ =
+  P.map Ast.List_ <|
+    P.loop [ value_ ] (listToplevelStep indent)
+     
 
-        ( Ast.String_ prev :: rest, Ast.String_ new ) -> -- TODO don't skip new lines
-          P.succeed (Ast.String_ (prev ++ " " ++ new) :: rest)
-
-        ( _, _ ) -> 
-          P.problem "I was parsing a list, but I got something unexpected when expecting a new entry!"
+listToplevelStep : Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
+listToplevelStep indent values =
+  let finish = P.Done (List.reverse values)
+      next value_ = P.Loop (value_ :: values)
   in
-  P.andThen coalesce valueToplevel
+  U.indented indent
+    { smaller = P.succeed finish
+    , exactly =
+        P.succeed identity
+          |. P.chompIf U.isDash
+          |= P.oneOf
+                [ P.succeed next
+                    |. P.chompIf U.isNewLine
+                    |= listToplevelValue indent
+                , P.succeed next
+                    |. P.chompIf U.isSpace
+                    |= P.oneOf
+                        [ listInline
+                        , recordInline
+                        , P.map Ast.fromString (U.multiline indent)
+                        ]
+                ]
+    , larger  = P.map next << listToplevelSub indent
+    , ending  = P.succeed finish
+    }
+
+
+listToplevelValue : Int -> P.Parser Ast.Value
+listToplevelValue indent =
+  U.indented indent
+    { smaller = P.succeed Ast.Null_
+    , exactly = P.succeed Ast.Null_
+    , larger  = listToplevelSub indent
+    , ending = P.succeed Ast.Null_
+    }
+
+
+listToplevelSub : Int -> Int -> P.Parser Ast.Value
+listToplevelSub indent indent_ =
+  P.oneOf
+    [ listInline
+    , recordInline
+    , listToplevel indent_
+    , P.succeed (\string next -> next string)
+        |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
+        |. U.spaces
+        |= P.oneOf
+              [ P.succeed (recordToplevelConfirmed indent_)
+                  |. P.chompIf U.isColon 
+              , P.succeed (P.succeed << Ast.String_)
+              ]
+        |> P.andThen identity
+    , P.chompWhile (U.neither U.isColon U.isNewLine)
+        |> P.getChompedString
+        |> P.andThen
+              (\string ->
+                P.oneOf
+                  [ P.succeed (recordToplevelConfirmed indent_ string)
+                      |. P.chompIf U.isColon 
+                      |> P.andThen identity
+                  , P.map (\rem -> Ast.fromString (string ++ rem)) (U.multiline indent)
+                  ]
+              )
+    ]
 
 
 
@@ -222,7 +267,17 @@ recordToplevel : Int -> P.Parser Ast.Value
 recordToplevel indent =
   P.oneOf 
     [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
+        |> P.andThen (\r -> 
+            case r of
+              Ok v -> P.succeed v
+              Err s -> P.succeed (Ast.String_ s)
+          )
     , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
+        |> P.andThen (\r -> 
+            case r of
+              Ok v -> P.succeed v
+              Err s -> P.succeed (Ast.String_ s)
+          )
     , U.fork
         [ U.Branch (P.symbol ":") (recordToplevelConfirmed indent)
         , U.Branch Yaml.Parser.Document.ending (P.succeed << Ast.fromString)
@@ -231,28 +286,28 @@ recordToplevel indent =
 
 
 {-| -}
-recordToplevelInner : Int -> P.Parser Ast.Value
+recordToplevelInner : Int -> P.Parser (Result String Ast.Value)
 recordToplevelInner indent =
   P.oneOf 
     [ P.andThen (fromQuotedPropertyName indent) U.singleQuotes
     , P.andThen (fromQuotedPropertyName indent) U.doubleQuotes
     , U.fork
-        [ U.Branch (P.symbol ":") (recordToplevelConfirmed indent)
-        , U.Branch (P.symbol "\n") (P.succeed << Ast.fromString)
-        , U.Branch Yaml.Parser.Document.ending (P.succeed << Ast.fromString)
+        [ U.Branch (P.symbol ":") (\v -> P.succeed Ok |= recordToplevelConfirmed indent v)
+        , U.Branch (P.symbol "\n") (P.succeed << Err)
+        , U.Branch Yaml.Parser.Document.ending (P.succeed << Err)
         ]
     ]
 
 
-fromQuotedPropertyName : Int -> String -> P.Parser Ast.Value
+fromQuotedPropertyName : Int -> String -> P.Parser (Result String Ast.Value)
 fromQuotedPropertyName indent name =
   P.succeed identity
     |. U.spaces
     |= P.oneOf
         [ P.succeed ()
             |. P.chompIf U.isColon
-            |> P.andThen (\_ -> recordToplevelConfirmed indent name)
-        , P.succeed (Ast.String_ name)
+            |> P.andThen (\_ -> P.succeed Ok |= recordToplevelConfirmed indent name)
+        , P.succeed (Err name)
             |. U.whitespace
             |. P.end
         ]

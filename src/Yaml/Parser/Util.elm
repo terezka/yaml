@@ -1,10 +1,10 @@
 module Yaml.Parser.Util exposing 
   ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
-  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace, anything
+  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace, anything, multiline
   , anyOf
   , Branch, fork
   , singleQuotes, doubleQuotes, lineOfCharacters, characters, remaining
-  , nextIndent, checkIndent
+  , nextIndent, checkIndent, indented
   , propertyName
   )
 
@@ -222,6 +222,28 @@ end =
     ]
 
 
+{-| -}
+multiline : Int -> P.Parser String
+multiline indent =
+  P.loop [] (multilineStep indent)
+
+
+multilineStep : Int -> List String -> P.Parser (P.Step (List String) String)
+multilineStep indent lines =
+  let
+    conclusion line indent_ =
+      if indent_ > indent then
+        P.Loop (line :: lines)
+      else
+        P.Done (String.join "\n" (List.reverse (line :: lines)))
+  in
+  P.succeed conclusion
+    |= (P.chompWhile (not << isNewLine) |> P.getChompedString)
+    |. P.chompIf isNewLine
+    |. P.spaces
+    |= P.getCol
+
+
 
 -- STRINGS
 
@@ -347,9 +369,27 @@ checkIndent indent next =
             else if actual > indent then next.larger actual
             else next.smaller
           ]
-        
   in
   P.andThen check nextIndent
+
+
+
+{-| -}
+indented : Int -> { smaller : P.Parser a, exactly : P.Parser a, larger : Int -> P.Parser a, ending : P.Parser a } -> P.Parser a
+indented indent next =
+  let check actual =
+        P.oneOf
+          [ P.andThen (\_ -> next.ending) end
+          , if actual == indent then next.exactly
+            else if actual > indent then next.larger actual
+            else next.smaller
+          ]
+  in
+  P.succeed identity
+    |. whitespace
+    |= P.getCol
+    |> P.andThen check
+
 
 
 

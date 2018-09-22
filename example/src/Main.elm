@@ -120,7 +120,7 @@ decodePerson =
     (Yaml.Decode.field "terms" (Yaml.Decode.list decodeTerm))
 
 
-decodeBio : Yaml.Decode.Decoder String
+decodeBio : Yaml.Decode.Decoder (Maybe String)
 decodeBio =
   Yaml.Decode.sometimes <|
     Yaml.Decode.field "religion" Yaml.Decode.string
