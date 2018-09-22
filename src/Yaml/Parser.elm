@@ -93,23 +93,29 @@ valueInline endings =
 {-| -}
 listToplevel : Int -> P.Parser Ast.Value
 listToplevel indent =
-  P.oneOf
-    [ P.succeed identity
-        |. P.symbol "- "
-        |= listToplevelValue indent
-        |> P.andThen (listToplevelStepOne indent)
-    , P.succeed identity
-        |. P.symbol "-\n"
-        |= listToplevelValue indent
-        |> P.andThen (listToplevelStepOne indent)
-    ]
+  let
+    withEntry value_ =
+      P.succeed Ast.List_
+        |= P.loop [ value_ ] (listToplevelStep indent)
+  in
+  listToplevelEntry indent
+    |> P.andThen withEntry
 
 
-listToplevelStepOne : Int -> Ast.Value -> P.Parser Ast.Value
-listToplevelStepOne indent value_ =
-  P.map Ast.List_ <|
-    P.loop [ value_ ] (listToplevelStep indent)
-     
+listToplevelEntry : Int -> P.Parser Ast.Value
+listToplevelEntry indent =
+  P.succeed identity
+    |. P.oneOf 
+        [ P.symbol "- "
+        , P.symbol "-\n"
+        ]
+    |= U.indented indent
+        { smaller = P.succeed Ast.Null_
+        , exactly = P.succeed Ast.Null_
+        , larger  = listToplevelSub indent
+        , ending = P.succeed Ast.Null_
+        }
+
 
 listToplevelStep : Int -> List Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
 listToplevelStep indent values =
@@ -118,23 +124,9 @@ listToplevelStep indent values =
   in
   U.indented indent
     { smaller = P.succeed finish
-    , exactly =
-        P.succeed next
-          |. P.chompIf U.isDash
-          |. P.chompIf (U.either U.isNewLine U.isSpace)
-          |= listToplevelValue indent
+    , exactly = P.map next (listToplevelEntry indent)
     , larger  = P.map next << listToplevelSub indent
     , ending  = P.succeed finish
-    }
-
-
-listToplevelValue : Int -> P.Parser Ast.Value
-listToplevelValue indent =
-  U.indented indent
-    { smaller = P.succeed Ast.Null_
-    , exactly = P.succeed Ast.Null_
-    , larger  = listToplevelSub indent
-    , ending = P.succeed Ast.Null_
     }
 
 
