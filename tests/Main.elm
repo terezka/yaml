@@ -146,54 +146,63 @@ suite =
             - ccc
             """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]
-      , Test.test "a list with null" <|
-        \_ -> 
-          expectValue 
-            """
-            -
+    , Test.test "a list with null" <|
+      \_ -> 
+        expectValue 
+          """
+          -
+          - bbb
+          - ccc
+          """ <|
+          Ast.List_ [ Ast.Null_, Ast.String_ "bbb", Ast.String_ "ccc" ]
+    , Test.test "a list with multi-line string" <|
+      \_ -> 
+        expectValue 
+          """
+          -
+          - bbb
+           bbb bbb
+           bbb
+          - ccc
+          """ <|
+            Ast.List_ [ Ast.Null_, Ast.String_ "bbb\nbbb bbb\nbbb", Ast.String_ "ccc" ]
+    , Test.test "a list with a list inside" <|
+      \_ -> 
+        expectValue """
+          - aaa
+          -
+            - aaa
             - bbb
             - ccc
-            """ <|
-            Ast.List_ [ Ast.Null_, Ast.String_ "bbb", Ast.String_ "ccc" ]
-      , Test.test "a list with multi-line string" <|
-        \_ -> 
-          expectValue 
-            """
-            -
+          - ccc
+          """ <|
+          Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
+    , Test.test "a list with a list inside on same line" <|
+      \_ -> 
+        expectValue """
+          - aaa
+          - - aaa
             - bbb
-             bbb bbb
-             bbb
             - ccc
-            """ <|
-              Ast.List_ [ Ast.Null_, Ast.String_ "bbb\nbbb bbb\nbbb", Ast.String_ "ccc" ]
-      , Test.test "a list with a list inside" <|
-        \_ -> 
-          expectValue """
-            - aaa
-            -
-              - aaa
-              - bbb
-              - ccc
-            - ccc
-            """ <|
-            Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
-      , Test.test "a list with a list inside on same line" <|
-        \_ -> 
-          expectValue """
-            - aaa
-            - - aaa
-              - bbb
-              - ccc
-            - ccc
-            """ <|
-            Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
-      , Test.test "a record" <|
+          - ccc
+          """ <|
+          Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
+    , Test.test "a record" <|
+      \_ -> 
+        expectValue 
+          """
+          aaa: aaa
+          bbb: bbb
+          ccc: ccc
+          """ <|
+          Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a record with quoted property names and values" <|
         \_ -> 
           expectValue 
             """
-            aaa: aaa
-            bbb: bbb
-            ccc: ccc
+            'aaa': aaa
+            "bbb": "bbb"
+            'ccc': 'ccc'
             """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "a record with a record inside" <|
@@ -208,6 +217,39 @@ suite =
             ccc: ccc
             """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a record with a list inside" <|
+        \_ -> 
+          expectValue 
+            """
+            aaa: aaa
+            bbb:
+              - aaa
+              - bbb
+              - ccc
+            ccc: ccc
+            """ <|
+            Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a record with a list inside on the same level" <|
+        \_ -> 
+          expectValue 
+            """
+            aaa: aaa
+            bbb:
+            - aaa
+            - bbb
+            - ccc
+            ccc: ccc
+            """ <|
+            Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ]), ("ccc", Ast.String_ "ccc") ])
+    , Test.test "a record with comments" <|
+        \_ -> 
+          expectValue 
+            """
+            aaa: aaa # hey
+            bbb: bbb
+            ccc: ccc
+            """ <|
+            Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
     ]
 
 
