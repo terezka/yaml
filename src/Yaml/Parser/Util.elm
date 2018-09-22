@@ -1,6 +1,6 @@
 module Yaml.Parser.Util exposing 
   ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
-  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, newLines, whitespace, multiline
+  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, whitespace, multiline
   , singleQuotes, doubleQuotes, remaining
   , indented
   )
@@ -181,18 +181,6 @@ whitespace =
     |. P.oneOf [ comment, P.succeed () ]
     |. P.spaces
 
-
-{-| -}
-newLines : P.Parser ()
-newLines =
-  let actualNewLines = 
-        P.chompWhile (\c -> c == '\n')
-  in
-  P.succeed ()
-    |. actualNewLines
-    |. P.oneOf [ comment, P.succeed () ]
-    |. actualNewLines
-  
 
 {-| -}
 newLine : P.Parser ()
