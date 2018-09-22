@@ -102,11 +102,7 @@ listToplevel indent =
             |> P.andThen (listToplevelStepOne indent)
         , P.succeed identity
             |. P.chompIf U.isSpace
-            |= P.oneOf
-                  [ listInline
-                  , recordInline
-                  , P.map Ast.fromString (U.multiline indent)
-                  ]
+            |= listToplevelValue indent
             |> P.andThen (listToplevelStepOne indent)
         , P.succeed Ast.fromString
             |= U.remaining -- TODO add dash
@@ -135,11 +131,7 @@ listToplevelStep indent values =
                     |= listToplevelValue indent
                 , P.succeed next
                     |. P.chompIf U.isSpace
-                    |= P.oneOf
-                        [ listInline
-                        , recordInline
-                        , P.map Ast.fromString (U.multiline indent)
-                        ]
+                    |= listToplevelValue indent
                 ]
     , larger  = P.map next << listToplevelSub indent
     , ending  = P.succeed finish

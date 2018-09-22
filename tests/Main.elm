@@ -178,6 +178,17 @@ suite =
 
             """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
+      , Test.test "a list with a list inside on same line" <|
+        \_ -> 
+          expectValue """
+            - aaa
+            - - aaa
+              - bbb
+              - ccc
+            - ccc
+
+            """ <|
+            Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
       , Test.test "a record" <|
         \_ -> 
           expectValue 
