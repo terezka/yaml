@@ -224,10 +224,18 @@ recordOrString indent indent_ =
         |> P.andThen identity
 
     addRemaining string remaining =
-      Ast.fromString (string ++ remaining)
+      Ast.fromString (removeComment string ++ remaining)
+
+    removeComment string =
+      string
+        |> String.split " #"
+        |> List.head
+        |> Maybe.withDefault ""
   in
   P.oneOf
-    [ P.succeed identity
+    [ P.succeed (Ast.String_ ":")
+        |. P.chompIf U.isColon
+    , P.succeed identity
         |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
         |. U.spaces
         |> P.andThen withQuote
@@ -246,7 +254,7 @@ record indent property =
       P.succeed (Ast.Record_ << Dict.fromList)
         |= P.loop [ ( property, value_ ) ] (recordStep indent)
   in
-  recordElementValue indent -- TODO move to `recordOrString`
+  recordElementValue indent
     |> P.andThen confirmed
 
 

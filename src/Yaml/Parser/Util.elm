@@ -164,35 +164,48 @@ space =
 {-| -}
 spaces : P.Parser ()
 spaces =
-  let actualSpaces = 
-        P.chompWhile (\c -> c == ' ')
-  in
+  P.chompWhile isSpace
+
+
+{-| -}
+spacesAndMaybeComment : P.Parser ()
+spacesAndMaybeComment =
   P.succeed ()
-    |. actualSpaces
+    |. spaces
     |. P.oneOf [ comment, P.succeed () ]
-    |. actualSpaces
+    |. spaces
   
 
 {-| -}
 whitespace : P.Parser ()
 whitespace =
-  P.succeed ()
-    |. P.spaces
-    |. P.oneOf [ comment, P.succeed () ]
-    |. P.spaces
+  let
+    step _ =
+      P.oneOf
+        [ P.succeed (P.Loop ()) 
+            |. comment
+        , P.succeed (P.Loop ()) 
+            |. P.chompIf isSpace
+        , P.succeed (P.Loop ()) 
+            |. P.chompIf isNewLine
+        , P.succeed (P.Done ())
+        ]
+  in
+  P.loop () step
+  
 
 
 {-| -}
 newLine : P.Parser ()
 newLine =
-  P.chompIf (\c -> c == '\n')
+  P.chompIf isNewLine
 
 
 {-| -}
 comment : P.Parser ()
 comment =
   P.succeed ()
-    |. hash
+    |. P.symbol " #"
     |. P.chompUntilEndOr "\n"
 
 
@@ -216,15 +229,43 @@ multilineStep indent lines =
         P.Done (String.join "\n" (List.reverse (line :: lines)))
   in
   P.succeed conclusion
-    |= (P.chompWhile (not << isNewLine) |> P.getChompedString)
+    |= characters (not << isNewLine)
     |. P.chompIf isNewLine
-    |. P.spaces
+    |. spaces
     |= P.getCol
 
 
 {-| -}
 characters : (Char -> Bool) -> P.Parser String
 characters isOk =
+  let
+    done chars =
+      chars
+        |> List.reverse
+        |> String.concat
+        |> P.Done
+
+    more chars char =
+      char :: chars
+        |> P.Loop
+
+    step chars =
+      P.oneOf
+        [ P.succeed (done chars)
+            |. comment
+        , P.succeed ()
+            |. P.chompIf isOk
+            |> P.getChompedString
+            |> P.map (more chars)
+        , P.succeed (done chars)
+        ]
+  in
+  P.loop [] step
+
+
+{-| -}
+characters_ : (Char -> Bool) -> P.Parser String
+characters_ isOk =
   P.succeed ()
     |. P.chompWhile isOk
     |> P.getChompedString
@@ -235,7 +276,7 @@ singleQuotes : P.Parser String
 singleQuotes =
   P.succeed (String.replace "\\" "\\\\")
     |. P.symbol "'"
-    |= characters (not << isSingleQuote)
+    |= characters_ (not << isSingleQuote)
     |. P.symbol "'"
     |. spaces
 
@@ -245,7 +286,7 @@ doubleQuotes : P.Parser String
 doubleQuotes =
   P.succeed identity
     |. P.symbol "\""
-    |= characters (not << isDoubleQuote)
+    |= characters_ (not << isDoubleQuote)
     |. P.symbol "\""
     |. spaces
 
