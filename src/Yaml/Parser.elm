@@ -149,26 +149,44 @@ listElementValue indent indent_ =
     [ listInline
     , recordInline
     , P.andThen list P.getCol
-    , P.succeed (\string next -> next string)
+    , recordOrString indent indent_
+    ]
+
+
+-- TODO move down
+recordOrString : Int -> Int -> P.Parser Ast.Value
+recordOrString indent indent_ =
+  let
+    withQuote qoute =
+      P.oneOf
+        [ property qoute
+        , P.succeed (Ast.String_ qoute)
+        ]
+
+    withString string =
+      P.oneOf
+        [ property string
+        , P.succeed (addRemaining string)
+            |= U.multiline indent
+        ]
+
+    property name =
+      P.succeed (recordToplevelConfirmed indent_ name)
+        |. P.chompIf U.isColon 
+        |> P.andThen identity
+
+    addRemaining string remaining =
+      Ast.fromString (string ++ remaining)
+  in
+  P.oneOf
+    [ P.succeed identity
         |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
         |. U.spaces
-        |= P.oneOf
-              [ P.succeed (recordToplevelConfirmed indent_)
-                  |. P.chompIf U.isColon 
-              , P.succeed (P.succeed << Ast.String_)
-              ]
-        |> P.andThen identity
-    , P.chompWhile (U.neither U.isColon U.isNewLine)
+        |> P.andThen withQuote
+    , P.succeed identity
+        |. P.chompWhile (U.neither U.isColon U.isNewLine)
         |> P.getChompedString
-        |> P.andThen
-              (\string ->
-                P.oneOf
-                  [ P.succeed (recordToplevelConfirmed indent_ string)
-                      |. P.chompIf U.isColon 
-                      |> P.andThen identity
-                  , P.map (\rem -> Ast.fromString (string ++ rem)) (U.multiline indent)
-                  ]
-              )
+        |> P.andThen withString
     ]
 
 

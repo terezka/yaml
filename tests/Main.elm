@@ -175,7 +175,6 @@ suite =
               - bbb
               - ccc
             - ccc
-
             """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
       , Test.test "a list with a list inside on same line" <|
@@ -186,7 +185,6 @@ suite =
               - bbb
               - ccc
             - ccc
-
             """ <|
             Ast.List_ [ Ast.String_ "aaa", Ast.List_ [ Ast.String_ "aaa", Ast.String_ "bbb", Ast.String_ "ccc" ], Ast.String_ "ccc" ]
       , Test.test "a record" <|
@@ -196,7 +194,6 @@ suite =
             aaa: aaa
             bbb: bbb
             ccc: ccc
-
             """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
     , Test.test "a record with a record inside" <|
@@ -209,7 +206,6 @@ suite =
               bbb: bbb
               ccc: ccc
             ccc: ccc
-
             """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])), ("ccc", Ast.String_ "ccc") ])
     ]
