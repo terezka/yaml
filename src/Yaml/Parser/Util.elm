@@ -1,6 +1,6 @@
 module Yaml.Parser.Util exposing 
   ( isColon, isComma, isDot, isDash, isHash, isSpace, isNewLine, isListStart, isListEnd, isRecordStart, isRecordEnd, either, neither, neither3
-  , colon, comma, dash, threeDashes, threeDots, space, spaces, newLine, whitespace, multiline
+  , threeDashes, threeDots, spaces, whitespace, multiline
   , singleQuotes, doubleQuotes, remaining
   , indented
   )
@@ -120,33 +120,9 @@ is searched char =
 
 
 {-| -}
-colon : P.Parser ()
-colon =
-  P.symbol ":"
-
-
-{-| -}
-comma : P.Parser ()
-comma =
-  P.symbol ","
-
-
-{-| -}
-dash : P.Parser ()
-dash =
-  P.symbol "-"
-
-
-{-| -}
 threeDashes : P.Parser ()
 threeDashes =
   P.symbol "---"
-
-
-{-| -}
-hash : P.Parser ()
-hash =
-  P.symbol "#"
 
 
 {-| -}
@@ -156,25 +132,10 @@ threeDots =
 
 
 {-| -}
-space : P.Parser ()
-space =
-  P.symbol " "
-
-
-{-| -}
 spaces : P.Parser ()
 spaces =
   P.chompWhile isSpace
 
-
-{-| -}
-spacesAndMaybeComment : P.Parser ()
-spacesAndMaybeComment =
-  P.succeed ()
-    |. spaces
-    |. P.oneOf [ comment, P.succeed () ]
-    |. spaces
-  
 
 {-| -}
 whitespace : P.Parser ()
@@ -193,13 +154,6 @@ whitespace =
   in
   P.loop () step
   
-
-
-{-| -}
-newLine : P.Parser ()
-newLine =
-  P.chompIf isNewLine
-
 
 {-| -}
 comment : P.Parser ()
