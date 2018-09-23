@@ -24,9 +24,9 @@ toString =
 
 
 {-| -}
-fromString : String -> Result (List P.DeadEnd) Ast.Value
+fromString : String -> Result String Ast.Value
 fromString =
-  P.run parser
+  P.run parser >> Result.mapError P.deadEndsToString
 
 
 {-| -}

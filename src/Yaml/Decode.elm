@@ -67,7 +67,7 @@ fromString : Decoder a -> String -> Result Error a
 fromString decoder raw =
   case Yaml.fromString raw of
     Ok v -> fromValue decoder v
-    Err error -> Err (Parsing "error parsing") -- TODO
+    Err error -> Err (Parsing error)
 
 
 fromValue : Decoder a -> Yaml.Value -> Result Error a
