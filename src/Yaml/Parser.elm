@@ -94,16 +94,7 @@ listElement : Int -> P.Parser Ast.Value
 listElement indent =
   P.succeed identity 
     |. listElementBegin
-    |= U.indented indent
-        { smaller = 
-            P.succeed Ast.Null_
-        , exactly =
-            P.succeed Ast.Null_
-        , larger =
-            listElementValue indent 
-        , ending = 
-            P.succeed Ast.Null_
-        }
+    |= listElementValue indent
 
 
 listElementBegin : P.Parser ()
@@ -114,14 +105,23 @@ listElementBegin =
     ]
 
 
-listElementValue : Int -> Int -> P.Parser Ast.Value
-listElementValue indent indent_ =
-  P.oneOf
-    [ listInline
-    , recordInline
-    , list indent_
-    , recordOrString indent indent_
-    ]
+listElementValue : Int -> P.Parser Ast.Value
+listElementValue indent =
+  U.indented indent
+    { smaller = 
+        P.succeed Ast.Null_
+    , exactly =
+        P.succeed Ast.Null_
+    , larger = \indent_ ->
+        P.oneOf
+          [ listInline
+          , recordInline
+          , list indent_
+          , recordOrString indent indent_
+          ]
+    , ending = 
+        P.succeed Ast.Null_
+    }
 
 
 
