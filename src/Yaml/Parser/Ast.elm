@@ -37,7 +37,7 @@ fromString string =
         Nothing ->
           case String.toFloat other of
             Just float -> Float_ float
-            Nothing -> String_ other
+            Nothing -> String_ string
 
 
 
