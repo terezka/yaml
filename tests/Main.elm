@@ -4,7 +4,19 @@ import Expect
 import Test
 import Yaml.Parser as Parser
 import Yaml.Parser.Ast as Ast
+import Yaml.Parser.Play
 import Dict
+
+
+play : Test.Test
+play =
+  Test.describe "test"
+    [ Test.test "stuff" <|
+        \_ -> 
+          Yaml.Parser.Play.fromString 
+            """$rucker"""
+            |> Expect.equal (Ok "$rucker")
+    ]
 
 
 suite : Test.Test
@@ -30,6 +42,10 @@ suite =
         \_ -> 
           expectValue "" <|
             Ast.Null_
+    , Test.test "a colon" <|
+        \_ -> 
+          expectValue ":" <|
+            Ast.String_ ":"
     , Test.test "an int" <|
         \_ -> 
           expectValue "0" <| 
