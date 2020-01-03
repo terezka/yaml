@@ -1,5 +1,5 @@
 module Yaml.Decode exposing 
-  ( Decoder, Error(..), fromString
+  ( Decoder, Error(..), fromString, fromValue
   , string, bool, int, float
   , nullable, list
   , field, at
@@ -14,7 +14,7 @@ as a `Json.Decode` in `elm/json`, so if you haven't worked with decoders
 before, reading through [the guide](https://guide.elm-lang.org/effects/json.html)
 maybe be helpful.
 
-@docs Decoder, Error, fromString
+@docs Decoder, Error, fromString, fromValue
 
 # Primitives
 @docs string, bool, int, float
@@ -70,6 +70,7 @@ fromString decoder raw =
     Err error -> Err (Parsing error)
 
 
+{-| -}
 fromValue : Decoder a -> Yaml.Value -> Result Error a
 fromValue (Decoder decoder) v =
   decoder v
