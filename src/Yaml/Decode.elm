@@ -74,7 +74,7 @@ type
 {-| -}
 fromString : Decoder a -> String -> Result Error a
 fromString decoder raw =
-    case Yaml.fromString raw of
+    case Yaml.fromString (raw ++ "\n") of
         Ok v ->
             fromValue decoder v
 
