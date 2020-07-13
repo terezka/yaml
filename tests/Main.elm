@@ -246,8 +246,8 @@ suite =
           expectValue 
             """
             aaa: aaa # hey
-            bbb: bbb
-            ccc: ccc
+            bbb: bbb # hey
+            ccc: ccc # hey
             """ <|
             Ast.Record_ (Dict.fromList [ ("aaa", Ast.String_ "aaa"), ("bbb", Ast.String_ "bbb"), ("ccc", Ast.String_ "ccc") ])
     ]

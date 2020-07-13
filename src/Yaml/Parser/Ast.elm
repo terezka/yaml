@@ -26,7 +26,10 @@ type alias Property =
 {-| -}
 fromString : String -> Value
 fromString string =
-  case String.toLower (String.trim string) of
+  let
+      trimmed = String.trim string
+  in
+  case String.toLower trimmed of
     "" -> Null_
     "null" -> Null_
     "true" -> Bool_ True
@@ -37,7 +40,7 @@ fromString string =
         Nothing ->
           case String.toFloat other of
             Just float -> Float_ float
-            Nothing -> String_ string
+            Nothing -> String_ trimmed
 
 
 
