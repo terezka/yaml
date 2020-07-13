@@ -1,9 +1,9 @@
 module Yaml.Decode exposing 
   ( Decoder, Error(..), fromString
-  , string, bool, int, float
-  , nullable, list
-  , field, at
-  , Value, value, sometimes, fail, succeed, andThen
+  , string, bool, int, float, null
+  , nullable, list, dict
+  , field, at, or, oneOf
+  , Value, value, sometimes, fail, succeed, andThen, lazy
   , map, map2, map3, map4, map5, map6, map7, map8
   )
 
@@ -17,19 +17,19 @@ maybe be helpful.
 @docs Decoder, Error, fromString
 
 # Primitives
-@docs string, bool, int, float
+@docs string, bool, int, float, null
 
 # Data Structures
-@docs nullable, list
+@docs nullable, list, dict
 
 # Object Primitives
-@docs field, at
+@docs field, at, or, oneOf
 
 # Maps
 @docs map, map2, map3, map4, map5, map6, map7, map8
 
 # Special
-@docs Value, value, sometimes, fail, succeed, andThen
+@docs Value, value, sometimes, fail, succeed, andThen, lazy
 
 
 -}
@@ -74,6 +74,11 @@ fromValue : Decoder a -> Yaml.Value -> Result Error a
 fromValue (Decoder decoder) v =
   decoder v
 
+{-| A faked lazy function the enables recirsive decoders.
+-}
+lazy : (() -> Decoder a) -> Decoder a
+lazy t =
+    succeed () |> andThen t
 
 
 -- PRIMITIVES
@@ -118,6 +123,14 @@ float =
       Ast.Float_ float_ -> Ok float_
       _ -> Err (Decoding "Expected float")
 
+{-| Decode a null value.
+-}
+null : Decoder (Maybe a)
+null =
+    Decoder <| \v ->
+        case v of
+            Ast.Null_ -> Ok Maybe.Nothing
+            _ -> Err (Decoding "Expected null")
 
 {-| Decode a nullable YAML value into an Elm value.
 -}
@@ -217,6 +230,44 @@ andThen next decoder =
       Ok a -> fromValue (next a) v0
       Err err -> Err err
 
+{-| Try a list of different decoders. Pick the first working one.
+This can be useful if the YAML comes in different formats. For
+example, if you want to read an array of numbers but some of them
+are `null`.
+-}
+oneOf : List (Decoder a) -> Decoder a
+oneOf ds =
+    List.foldr or (fail "Empty") ds
+
+{-| Choose between (try out) two decoders.
+-}
+or : Decoder a -> Decoder a -> Decoder a
+or lp rp =
+    Decoder <| \v ->
+        case fromValue lp v of
+            Ok a -> Ok a
+            Err _ -> fromValue rp v
+
+{-| This can be used to decode a dictionary, the result is a list
+of key/value pairs. This function can be called in conjunction
+with `oneOf` to define more complex decoders.
+-}
+dict : Decoder a -> Decoder (Dict.Dict String a)
+dict decoder =
+    Decoder <| \v ->
+        case v of
+            Ast.Record_ properties ->
+                properties
+                    |> Dict.toList
+                    |> List.map (\( key, val ) -> ( key, fromValue decoder val ))
+                    |> List.filterMap (\( key, val ) ->
+                                           case val of
+                                               Ok val_ -> Just ( key, val_ )
+                                               _ -> Nothing
+                                      )
+                    |> Dict.fromList
+                    |> Ok
+            _ -> Err (Decoding "Expected record")
 
 
 -- MAPS
@@ -418,5 +469,3 @@ find names decoder v0 =
       
     [] ->
       fromValue decoder v0
- 
-
