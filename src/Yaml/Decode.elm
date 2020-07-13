@@ -20,7 +20,7 @@ maybe be helpful.
 @docs string, bool, int, float, null
 
 # Data Structures
-@docs nullable, list, keyValuePairs
+@docs nullable, list, dict
 
 # Object Primitives
 @docs field, at, or, oneOf
