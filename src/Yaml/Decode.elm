@@ -469,9 +469,3 @@ find names decoder v0 =
       
     [] ->
       fromValue decoder v0
- 
-isOk : Result e a -> Bool
-isOk r =
-    case r of
-        Ok _ -> True
-        _ -> False
