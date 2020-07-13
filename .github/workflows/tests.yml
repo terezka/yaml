@@ -1,0 +1,17 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Elm environment
+      uses: jorelali/setup-elm@v2
+      with:
+        elm-version: 0.19.1
+    - name: Test
+      run: npx elm-test
+    - name: Check documentation
+      run: elm make --docs=docs.json
